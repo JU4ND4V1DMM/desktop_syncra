@@ -2,7 +2,7 @@ import polars as pl
 from pathlib import Path
 from datetime import datetime
 
-def convert_csv_to_parquet(input_folder: str, output_base_path: str) -> None:
+def convert_csv_to_parquet_simple(input_folder: str, output_base_path: str) -> None:
     """
     Efficient CSV to Parquet converter with memory optimization.
     """
@@ -165,3 +165,15 @@ def convert_csv_scan_optimized(input_folder: str, output_base_path: str) -> None
             print(f"❌ {file_path.name}: {str(e)[:100]}...")
     
     print("🎉 Lazy conversion completed")
+    
+def convert_csv_to_parquet(input_folder: str, output_base_path: str) -> None:
+    """
+    Wrapper function to choose the best conversion method based on file size.
+    """
+    try:
+        convert_csv_to_parquet(input_folder, output_base_path)
+    except Exception:
+        try:
+            convert_large_csv_optimized(input_folder, output_base_path)
+        except Exception:
+            convert_csv_scan_optimized(input_folder, output_base_path)

@@ -397,6 +397,7 @@ def read_compilation_datasets(input_folder, output_path, num_partitions, month_d
         dataframes['Colas'] = dataframes['Colas'].withColumn("FILTRO COLAS", lit("APLICA"))
         
         dataframes['Ranking'] = dataframes['Ranking'].withColumnRenamed("CUENTA", "CUENTA NEXT")
+        dataframes['Ranking'] = dataframes['Ranking'].withColumnRenamed("PAGO", "PAGO RANKING")
         dataframes['Ranking'] = dataframes['Ranking'].withColumn("CUENTA NEXT", concat(col("CUENTA NEXT"), lit("-")))
         dataframes['Ranking'] = dataframes['Ranking'].withColumnRenamed("SERVICIOS", "SERVICIOS RANKING")
         dataframes['Ranking'] = dataframes['Ranking'].withColumnRenamed("ESTADO", "ESTADO RANKING")
