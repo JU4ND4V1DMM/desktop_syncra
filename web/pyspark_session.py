@@ -2,6 +2,12 @@ from pyspark.sql import SparkSession
 import os
 import shutil
 import string
+import psutil
+
+def get_system_memory():
+    """Obtiene la memoria RAM total del sistema en GB"""
+    memory_gb = psutil.virtual_memory().total / (1024 ** 3)  # Convertir bytes a GB
+    return memory_gb
 
 def get_disk_with_most_free_space():
     best_drive = None
@@ -20,29 +26,36 @@ def get_disk_with_most_free_space():
 
 def try_create_spark_session(config_level):
     try:
+        # Obtener memoria total del sistema
+        total_memory_gb = get_system_memory()
+        
         if config_level == "advanced": 
+            # 85% de la memoria total
+            memory_gb = int(total_memory_gb * 0.85)
             spark = SparkSession.builder \
                 .appName("GlobalSparkApp") \
                 .config("spark.local.dir", "C:/tmp/hive") \
                 .config("spark.driver.extraJavaOptions", "-Djava.security.manager=allow") \
                 .config("spark.executor.extraJavaOptions", "-Djava.security.manager=allow") \
-                .config("spark.driver.memory", '12g') \
-                .config("spark.executor.memory", '12g') \
+                .config("spark.driver.memory", f'{memory_gb}g') \
+                .config("spark.executor.memory", f'{memory_gb}g') \
                 .config("spark.jars.packages", "com.crealytics:spark-excel_2.12:0.13.5") \
                 .getOrCreate()
             spark.conf.set("mapreduce.fileoutputcommitter.marksuccessfuljobs", "false")
-            print("✔ Spark avanzado inicializado correctamente.")
+            print(f"✔ Spark avanzado inicializado correctamente. Memoria: {memory_gb}GB ({total_memory_gb:.1f}GB total)")
             return spark
 
         elif config_level == "medium":
+            # 60% de la memoria total
+            memory_gb = int(total_memory_gb * 0.60)
             spark = SparkSession.builder \
                 .appName("GlobalSparkApp") \
-                .config("spark.driver.memory", '8g') \
-                .config("spark.executor.memory", '8g') \
+                .config("spark.driver.memory", f'{memory_gb}g') \
+                .config("spark.executor.memory", f'{memory_gb}g') \
                 .config("spark.jars.packages", "com.crealytics:spark-excel_2.12:0.13.5") \
                 .getOrCreate()
             spark.conf.set("mapreduce.fileoutputcommitter.marksuccessfuljobs", "false")
-            print("✔ Spark medio inicializado correctamente.")
+            print(f"✔ Spark medio inicializado correctamente. Memoria: {memory_gb}GB ({total_memory_gb:.1f}GB total)")
             return spark
 
         elif config_level == "basic":
@@ -50,7 +63,7 @@ def try_create_spark_session(config_level):
                 .appName("GlobalSparkApp") \
                 .config("mapreduce.fileoutputcommitter.marksuccessfuljobs", "false") \
                 .getOrCreate()
-            print("✔ Spark básico inicializado correctamente.")
+            print(f"✔ Spark básico inicializado correctamente. Memoria automática ({total_memory_gb:.1f}GB total)")
             return spark
 
     except Exception as e:

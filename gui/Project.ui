@@ -3434,7 +3434,7 @@ QPushButton:pressed {
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-193</y>
+            <y>0</y>
             <width>222</width>
             <height>312</height>
            </rect>
@@ -4158,7 +4158,7 @@ QPushButton:pressed {
          </rect>
         </property>
         <property name="minimum">
-         <number>2025</number>
+         <number>2024</number>
         </property>
         <property name="maximum">
          <number>2040</number>

@@ -187,3 +187,49 @@ def save_to_xlsx(data_frame: pl.DataFrame, output_path: str, filename: str, part
 
     except Exception as e:
         print(f"❌ ERROR: Failed to save DataFrame to XLSX. Reason: {e}")
+
+def save_to_parquet(data_frame, output_path: str, filename: str, partitions: Union[int, str], delimiter: str = ";"):
+    """
+    Saves a DataFrame (Polars or PySpark) to a single Parquet file.
+    Tries PySpark first for performance, falls back to Polars if conversion fails.
+    """
+    partitions = int(partitions)
+    if output_path and not os.path.exists(output_path):
+        os.makedirs(output_path)
+    
+    now = datetime.now()
+    time_file = now.strftime("%Y%m%d_%H%M")
+    file_date = now.strftime("%Y%m%d")
+    
+    # Create output file path
+    final_output_path = os.path.join(output_path, f"{filename}_{file_date}.parquet")
+
+    # Save the DataFrame using PySpark
+    try:
+        (data_frame
+            .repartition(partitions) 
+            .write
+            .mode("overwrite")
+            .option("compression", "snappy")  # Parquet compression
+            .parquet(final_output_path)
+        )
+
+        print(f"✅ Parquet file successfully saved to: {final_output_path}")
+
+    except Exception as e:
+        print(f"⚠️ PySpark Parquet save failed ({e}), trying Polars fallback...")
+        try:
+            # Save using Polars
+            print("💾 Attempting to save with Polars...")
+            if not isinstance(data_frame, pl.DataFrame):
+                # Convert from PySpark or Pandas
+                if hasattr(data_frame, "toPandas"):  # PySpark
+                    data_frame = pl.from_pandas(data_frame.toPandas())
+                elif isinstance(data_frame, pd.DataFrame):
+                    data_frame = pl.from_pandas(data_frame)
+
+            data_frame.write_parquet(final_output_path, compression="snappy")
+            print(f"✅ Parquet file successfully saved to: {final_output_path}")
+
+        except Exception as spark_err:
+            print(f"❌ ERROR: Failed to save with both PySpark and Polars. Reason: {spark_err}")

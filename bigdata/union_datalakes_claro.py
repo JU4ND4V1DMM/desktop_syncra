@@ -1,4 +1,5 @@
 import os
+import shutil
 import json
 from pathlib import Path
 from itertools import chain
@@ -66,17 +67,9 @@ def cruice_department_mapping(actual_path):
                           Caldas, San_Andres, Magdalena, Guajira, Risaralda, Quindio, Sucre, Guainia, Putumayo, Vaupes,
                           Antioquia_1, Antioquia_2, Antioquia_3]
     
-    for i in department_mapping:
-        unique_values = set(i.values())
-        print(f"{unique_values}: {len(i)}")
-    
     department_mapping_2 = [Huila, Vichada, Atlantico, Meta, Amazonas, Bolivar, Cundinamarca_1, Cundinamarca_2, 
                             Cundinamarca_3, Boyaca_1, Boyaca_2, Narino, Valle_del_Cauca, Tolima]
-    
-    for i in department_mapping_2:
-        unique_values = set(i.values())
-        print(f"{unique_values}: {len(i)}")
-    
+
     return department_mapping, department_mapping_2
 
 def rename_columns(df, column_map):
@@ -85,6 +78,68 @@ def rename_columns(df, column_map):
         df = df.withColumnRenamed(old_name, new_name)
     return df
 
+def cut_lineage_checkpoint(df, step_name, spark):
+    """
+    Toma un DataFrame, lo guarda en parquet en una carpeta temporal,
+    limpia la caché y lo vuelve a leer.
+    
+    Esto sirve para 'resetear' la historia (DAG) y liberar memoria RAM.
+    """
+    # 1. Obtener directorio del script actual y crear carpeta temp
+    delete_temp_checkpoint_folder()
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    temp_folder = os.path.join(script_dir, "temp_spark_30042000")
+    
+    # Nombre del archivo temporal (se sobreescribirá cada vez para no llenar el disco)
+    output_path = os.path.join(temp_folder, f"temp_parquet_{step_name}")
+
+    print(f"\n✂️ INICIANDO CORTE DE LINAJE...")
+    print(f"📁 Carpeta temporal: {output_path}")
+
+    # 2. Guardar el DataFrame en disco (Acción forzosa)
+    # Al escribir en disco, Spark se ve obligado a calcular todo hasta este punto.
+    try:
+        (df.write
+           .mode("overwrite")
+           .parquet(output_path))
+    except Exception as e:
+        print(f"❌ Error escribiendo temporal: {e}")
+        raise e
+
+    # 3. Limpieza de memoria (Clave para liberar recursos)
+    # Le decimos a Spark que 'olvide' el dataframe anterior de la RAM
+    df.unpersist()
+
+    # (Opcional) Limpieza agresiva del catálogo si tienes mucha basura en caché
+    spark.catalog.clearCache() 
+
+    # 4. Leer el archivo que acabamos de guardar
+    # Este nuevo DF no tiene historia previa, su "nacimiento" es leer este archivo.
+    df_clean = spark.read.parquet(output_path)
+    
+    # Hacemos un conteo rápido para verificar integridad y forzar actualización de metadatos
+    count = df_clean.count()
+    
+    print(f"✅ LINAJE CORTADO EXITOSAMENTE.")
+    print(f"📊 El DataFrame limpio tiene {count} filas.")
+    print("-" * 50)
+
+    return df_clean
+
+def delete_temp_checkpoint_folder():
+    """
+    Deletes the 'temp_spark_30042000' folder located in the script's directory if it exists.
+    """
+    try:
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+    except NameError:
+        return 
+        
+    temp_folder = os.path.join(script_dir, "temp_spark_30042000")
+    
+    if os.path.exists(temp_folder):
+        shutil.rmtree(temp_folder)
+        
 def Save_Data_Frame(Data_Frame, Directory_to_Save, Partitions, year_data, month_data):
 
     now = datetime.now()
@@ -96,8 +151,13 @@ def Save_Data_Frame(Data_Frame, Directory_to_Save, Partitions, year_data, month_
     partitions = Partitions
     delimiter = ";"
 
-    save_to_csv(df, output_path, type_file, partitions, delimiter)
+    # Cantidad de filas y columnas
+    print(f"\n📊 DIMENSIONES:")
+    print(f"Filas: {df.count()}")
+    print(f"Columnas: {len(df.columns)}\n")
 
+    save_to_csv(df, output_path, type_file, partitions, delimiter)
+    
 def filters_report(df):
     
     df = df.select("CUENTA NEXT", "FECHA_GESTION_RG", "GRUPO_TIPIFICACION_RG")
@@ -155,37 +215,66 @@ def filters_report(df):
     
     return df_grouped
 
+def quit_zeros(col_name, df): 
+    
+    df = df.withColumn(col_name, when(col(col_name).endswith('.0'), 
+            regexp_replace(col(col_name), '\.0$', '')).otherwise(col(col_name)))
+    
+    return df
+
+def read_dynamic_file(spark, file_path):
+    """
+    Dynamically reads files prioritizing Parquet over CSV with automatic extension checking
+    """
+
+    # Try different extensions in priority order
+    extensions_to_try = ['.parquet', '.csv']
+    
+    for ext in extensions_to_try:
+        full_path = file_path + ext
+        if os.path.exists(full_path):
+            try:
+                if ext == '.parquet':
+                    return spark.read.parquet(full_path)
+                elif ext == '.csv':
+                    return spark.read.csv(full_path, header=True, sep=";")
+            except Exception as e:
+                print(f"Error reading {full_path}: {str(e)}")
+                continue
+    
+    raise FileNotFoundError(f"No readable file found for base path: {file_path}")
+    
 def read_compilation_datasets(input_folder, output_path, num_partitions, month_data, year_data):
     
     print(f"Received: {input_folder}, {output_path}, {num_partitions}, {month_data}, {year_data}")
     spark = get_spark_session()
     
     # File paths
-    Root_Data = os.path.join(input_folder, f"Asignacion Estructurada/Asignacion Multimarca {year_data}-{month_data}.csv")
-    Root_Base = os.path.join(input_folder, f"Base General Mensual/BaseGeneral {year_data}-{month_data}.csv")
-    Root_Touch = os.path.join(input_folder, f"Toques por Telemática/Toques {year_data}-{month_data}.csv")
-    Root_Demo = os.path.join(input_folder, f"Demograficos Estructurados/Demograficos {year_data}-{month_data}.csv")
-    Root_Colas = os.path.join(input_folder, f"Archivos Complementarios/Colas/Colas {year_data}-{month_data}.csv")
-    Root_Ranking = os.path.join(input_folder, f"Archivos Complementarios/Ranking/Rankings Claro {year_data}-{month_data}.csv")
-    Root_Exc_Doc = os.path.join(input_folder, f"Archivos Complementarios/Exclusiones/Exclusion Documentos {year_data}-{month_data}.csv")
-    Root_Exc_Cta = os.path.join(input_folder, f"Archivos Complementarios/Exclusiones/Exclusion Cuentas {year_data}-{month_data}.csv")
-    Root_PSA = os.path.join(input_folder, f"Archivos Complementarios/Pagos sin Aplicar/Pagos sin Aplicar {year_data}-{month_data}.csv")
-    Root_NG = os.path.join(input_folder, f"Archivos Complementarios/No Gestión/No Gestion {year_data}-{month_data}.csv")
-    Root_Managment = os.path.join(input_folder, f"Archivos Complementarios/Reporte Gestión/ReporteGestion-{year_data}-{month_data}.csv")
+    Root_Data = os.path.join(input_folder, f"Asignacion Estructurada/Asignacion Multimarca {year_data}-{month_data}")
+    Root_Base = os.path.join(input_folder, f"Base General Mensual/BaseGeneral {year_data}-{month_data}")
+    Root_Touch = os.path.join(input_folder, f"Toques por Telemática/Toques {year_data}-{month_data}")
+    Root_Demo = os.path.join(input_folder, f"Demograficos Estructurados/Demograficos {year_data}-{month_data}")
+    Root_Colas = os.path.join(input_folder, f"Archivos Complementarios/Colas/Colas {year_data}-{month_data}")
+    Root_Ranking = os.path.join(input_folder, f"Archivos Complementarios/Ranking/Rankings Claro {year_data}-{month_data}")
+    Root_Exc_Doc = os.path.join(input_folder, f"Archivos Complementarios/Exclusiones/Exclusion Documentos {year_data}-{month_data}")
+    Root_Exc_Cta = os.path.join(input_folder, f"Archivos Complementarios/Exclusiones/Exclusion Cuentas {year_data}-{month_data}")
+    Root_PSA = os.path.join(input_folder, f"Archivos Complementarios/Pagos sin Aplicar/Pagos sin Aplicar {year_data}-{month_data}")
+    Root_NG = os.path.join(input_folder, f"Archivos Complementarios/No Gestión/No Gestion {year_data}-{month_data}")
+    Root_Managment = os.path.join(input_folder, f"Archivos Complementarios/Reporte Gestión/ReporteGestion-{year_data}-{month_data}")
     
     try:
         # Read DataFrames
-        File_Data = spark.read.csv(Root_Data, header=True, sep=";")
-        File_Base = spark.read.csv(Root_Base, header=True, sep=";")
-        File_Touch = spark.read.csv(Root_Touch, header=True, sep=";")
-        File_Demo = spark.read.csv(Root_Demo, header=True, sep=";")
-        File_Colas = spark.read.csv(Root_Colas, header=True, sep=";")
-        File_Ranking = spark.read.csv(Root_Ranking, header=True, sep=";")
-        File_Exc_Doc = spark.read.csv(Root_Exc_Doc, header=True, sep=";")
-        File_Exc_Cta = spark.read.csv(Root_Exc_Cta, header=True, sep=";")
-        File_PSA = spark.read.csv(Root_PSA, header=True, sep=";")
-        File_NG = spark.read.csv(Root_NG, header=True, sep=";")
-        File_Managment = spark.read.csv(Root_Managment, header=True, sep=";")
+        File_Data = read_dynamic_file(spark, Root_Data)
+        File_Base = read_dynamic_file(spark, Root_Base)
+        File_Touch = read_dynamic_file(spark, Root_Touch)
+        File_Demo = read_dynamic_file(spark, Root_Demo)
+        File_Colas = read_dynamic_file(spark, Root_Colas)
+        File_Ranking = read_dynamic_file(spark, Root_Ranking)
+        File_Exc_Doc = read_dynamic_file(spark, Root_Exc_Doc)
+        File_Exc_Cta = read_dynamic_file(spark, Root_Exc_Cta)
+        File_PSA = read_dynamic_file(spark, Root_PSA)
+        File_NG = read_dynamic_file(spark, Root_NG)
+        File_Managment = read_dynamic_file(spark, Root_Managment)
         
         # Rename columns
         column_renames = {
@@ -277,6 +366,15 @@ def read_compilation_datasets(input_folder, output_path, num_partitions, month_d
             .withColumn("TIPIFICACION_RG_CLEAN", regexp_replace(lower(col("TIPIFICACION_RG")), " ", "")) \
             .withColumn("GRUPO_TIPIFICACION_RG", map_expr.getItem(col("TIPIFICACION_RG_CLEAN")))
         
+        dataframes['Report_Managment'] = quit_zeros("CUENTA NEXT", dataframes['Report_Managment'])
+        dataframes['Data'] = quit_zeros("CUENTA_NEXT", dataframes['Data'])
+        dataframes['Touch'] = quit_zeros("Cuenta_Real", dataframes['Touch'])
+        dataframes['Demo'] = quit_zeros("cuenta", dataframes['Demo'])
+        dataframes['Colas'] = quit_zeros("Cuenta", dataframes['Colas'])
+        dataframes['Ranking'] = quit_zeros("CUENTA", dataframes['Ranking'])
+        dataframes['Payments_Not_Applied'] = quit_zeros("CUENTA", dataframes['Payments_Not_Applied'])
+        dataframes['No_Managment'] = quit_zeros("CUENTA", dataframes['No_Managment'])
+        
         dataframes['Report_Managment'] = dataframes['Report_Managment'] \
             .withColumn("CUENTA_NEXT", concat(regexp_replace(col("CUENTA NEXT"), "\\.", ""), lit("-")))
         
@@ -362,10 +460,13 @@ def read_compilation_datasets(input_folder, output_path, num_partitions, month_d
         
         Data_Frame = depto(Data_Frame, department_mapping, department_mapping_2)
 
+        step_name = "deptos_mapped"
+        Data_Frame = cut_lineage_checkpoint(Data_Frame, step_name, spark)
+        
         list_columns_base = dataframes['Base'].columns
         
         Data_Frame = RenameColumns(Data_Frame)
-        #Data_Frame = save_temp_log(Data_Frame, spark)
+        
         # Filter and write the DataFrame
         if Data_Frame.count() > 0:
             
@@ -497,7 +598,7 @@ def read_compilation_datasets(input_folder, output_path, num_partitions, month_d
             valid_columns = [col for col in list_columns if col in Data_Frame.columns]
             Data_Frame = Data_Frame.select(valid_columns)
             
-            print("\n4 Cantidad de registros:", Data_Frame.count())
+            print("4 Cantidad de registros:", Data_Frame.count())
             print(f'\n 🔨 First Columns: {Data_Frame.columns}')
         
             # Step 2: Create a dictionary mapping original names to normalized names for the first list
@@ -507,13 +608,14 @@ def read_compilation_datasets(input_folder, output_path, num_partitions, month_d
             
             Data_Frame = Data_Frame.filter(~col("BG_fecha_ingreso").contains("Manual"))
             
-            brands_list = ["0", "30"]
+            #brands_list = ["0", "30"]
             # Data_Frame = Data_Frame.filter(col("BG_marca_asignacion").isin(brands_list))
-            Data_Frame = Data_Frame.filter(col("BG_marca_asignacion") != "Castigo")
+            #Data_Frame = Data_Frame.filter(col("BG_marca_asignacion") != "Castigo")
             
             print("\n5 Cantidad de registros filtrados:", Data_Frame.count())
-            print(f"Saving file ✅ {year_data} - {month_data}")
+            
             Save_Data_Frame(Data_Frame, output_path, num_partitions, year_data, month_data)
+            delete_temp_checkpoint_folder()
             
         else:
             print("No data was merged.")
@@ -621,47 +723,54 @@ def clean_column_name(col_name):
 
 def depto(data_frame, department_mapping, department_mapping_2):
     
-    # Handle empty or null values in "Ciudad"
-    data_frame = data_frame.withColumn("Ciudad", when((col("Ciudad") == "") | (col("Ciudad").isNull()), "VACIO")
-                                        .otherwise(col("Ciudad")))
-    # Convert "Ciudad" to uppercase and split
+    # 1. Pre-process 'Ciudad'
+    data_frame = data_frame.withColumn("Ciudad", 
+                                      when((col("Ciudad") == "") | (col("Ciudad").isNull()), lit("VACIO"))
+                                      .otherwise(col("Ciudad")))
     data_frame = data_frame.withColumn("Ciudad", upper(split(col("Ciudad"), "/").getItem(0)))
 
-    # Initialize a column for department names
-    data_frame = data_frame.withColumn("department_column", col("Ciudad"))  # Default case
-    data_frame = data_frame.withColumn("department_column_2", col("Ciudad"))  # Default case
-    
-    # Loop through the dictionary to check for substring matches
-    for department_mapping_selected in department_mapping:
-        # Create a mapping for each department
-        for key, department in department_mapping_selected.items():
-            data_frame = data_frame.withColumn("department_column", 
-                                               when(col("Ciudad").contains(key), lit(department)).otherwise(col("department_column")))
-
-    for department_mapping_selected in department_mapping_2:
-        # Create a mapping for each department
-        for key, department in department_mapping_selected.items():
-            data_frame = data_frame.withColumn("department_column_2", 
-                                               when(col("Ciudad").contains(key), lit(department))
-                                               .otherwise(col("department_column_2")))
-    
-        # List of departments
-        deptos = [
-            "ARAUCA", "CASANARE", "CAUCA", "CHOCO", "N. DE SANTANDER",
-            "GUAVIARE", "CESAR", "CORDOBA", "SANTANDER", "CAQUETA",
-            "CALDAS", "SAN ANDRES", "MAGDALENA", "LA GUAJIRA", "RISARALDA",
-            "QUINDIO", "SUCRE", "GUAINIA", "PUTUMAYO", "VAUPES",
-            "ANTIOQUIA", "HUILA", "VICHADA", "ATLANTICO", "META",
-            "AMAZONAS", "BOLIVAR", "CUNDINAMARCA", "BOYACA", "NARINO",
-            "VALLE DEL CAUCA", "TOLIMA"
-        ]
-
-        # Update the DataFrame to assign department names
-        data_frame = data_frame.withColumn(
-            "DEPARTAMENTO", when(col("Ciudad") == "VACIO", lit("VACIO"))
-            .when(col("department_column").isin(deptos), col("department_column"))
-            .when(col("department_column_2").isin(deptos), col("department_column_2"))
-            .otherwise(lit("NO IDENTIFICADO"))
-        )
+    # --- Función auxiliar para generar la expresión SQL ---
+    def build_sql_case_when(mappings, default_col_name):
+        all_mappings = [item for sublist in mappings for item in sublist.items()]
         
+        # Invertir el orden para que el ELSE/Default sea el valor inicial
+        case_when_parts = []
+        
+        # Construir las condiciones CASE WHEN...
+        for key, department in all_mappings:
+            # Usamos 'LIKE' o 'RLIKE' para buscar subcadenas en SQL.
+            # 'LIKE %subcadena%' es la traducción directa de .contains().
+            case_when_parts.append(f"WHEN Ciudad LIKE '%{key}%' THEN '{department}'")
+        
+        # Unir todas las partes y añadir la cláusula final ELSE
+        sql_expression = f"CASE {' '.join(case_when_parts)} ELSE {default_col_name} END"
+        return sql_expression
+
+    # 2. Generar y Aplicar 'department_column' usando SQL
+    sql_expr_1 = build_sql_case_when(department_mapping, "Ciudad")
+    data_frame = data_frame.withColumn("department_column", expr(sql_expr_1))
+
+    # 3. Generar y Aplicar 'department_column_2' usando SQL
+    sql_expr_2 = build_sql_case_when(department_mapping_2, "Ciudad")
+    data_frame = data_frame.withColumn("department_column_2", expr(sql_expr_2))
+    
+    # 4. Department List for final check
+    deptos = [
+        "ARAUCA", "CASANARE", "CAUCA", "CHOCO", "N. DE SANTANDER",
+        "GUAVIARE", "CESAR", "CORDOBA", "SANTANDER", "CAQUETA",
+        "CALDAS", "SAN ANDRES", "MAGDALENA", "LA GUAJIRA", "RISARALDA",
+        "QUINDIO", "SUCRE", "GUAINIA", "PUTUMAYO", "VAUPES",
+        "ANTIOQUIA", "HUILA", "VICHADA", "ATLANTICO", "META",
+        "AMAZONAS", "BOLIVAR", "CUNDINAMARCA", "BOYACA", "NARINO",
+        "VALLE DEL CAUCA", "TOLIMA"
+    ]
+    
+    # 5. Final Assignment of "DEPARTAMENTO" (usando when/otherwise estándar de PySpark)
+    data_frame = data_frame.withColumn(
+        "DEPARTAMENTO", when(col("Ciudad") == "VACIO", lit("VACIO"))
+        .when(col("department_column").isin(deptos), col("department_column"))
+        .when(col("department_column_2").isin(deptos), col("department_column_2"))
+        .otherwise(lit("NO IDENTIFICADO"))
+    )
+    
     return data_frame
