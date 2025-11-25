@@ -3,6 +3,7 @@ import bigdata.demos_ai
 import bigdata.touch_ai
 import bigdata.union_datalakes_claro
 import gui.batch_cruice
+import gui.union_like_powershell
 import gui.adition_demographic
 import gui.read_files_wisebot
 from gui.dynamic_thread import DynamicThread
@@ -287,6 +288,7 @@ class Init_APP():
         self.process_data.commandLinkButton_2.clicked.connect(self.sending_sms_whatsapp)
         self.process_data.commandLinkButton_26.clicked.connect(self.search_demographic_claro)
         self.process_data.pushButton_29.clicked.connect(self.adition_demographics)
+        self.process_data.pushButton_30.clicked.connect(self.csv_like_union_powershell)
         self.process_data.commandLinkButton_33.clicked.connect(self.insert_new_demographics)
         
     def exec__process(self):
@@ -421,6 +423,36 @@ class Init_APP():
             partitions = 1
             
             gui.adition_demographic.process_demographics_fast(self.folder_path_IVR, self.folder_path, partitions, self.process_data)
+
+            Mbox_In_Process = QMessageBox()
+            Mbox_In_Process.setWindowTitle("Estado de Compilacion") 
+            Mbox_In_Process.setIcon(QMessageBox.Icon.Information)
+            Mbox_In_Process.setText("Procesamiento ejecutado exitosamente.") 
+            Mbox_In_Process.exec()
+        
+        else:
+            Mbox_File_Error = QMessageBox()
+            Mbox_File_Error.setWindowTitle("Error de procesamiento")
+            Mbox_File_Error.setIcon(QMessageBox.Icon.Warning)
+            Mbox_File_Error.setText("Debe seleccionar un archivo con la base para ejecutar la union de demograficos.")
+            Mbox_File_Error.exec()
+            
+    def csv_like_union_powershell(self):
+            
+        type_process = "folder"
+        
+        self.validation_data_folders(type_process)
+        self.digit_partitions_FOLDER()
+
+        if self.folder_path_IVR != None:
+
+            Mbox_In_Process = QMessageBox()
+            Mbox_In_Process.setWindowTitle("Procesando")
+            Mbox_In_Process.setIcon(QMessageBox.Icon.Information)
+            Mbox_In_Process.setText("Por favor espere mientras se procesa la union de demograficos")
+            Mbox_In_Process.exec()
+            
+            gui.union_like_powershell.merge_files_by_subfolder(self.folder_path_IVR, self.folder_path)
 
             Mbox_In_Process = QMessageBox()
             Mbox_In_Process.setWindowTitle("Estado de Compilacion") 

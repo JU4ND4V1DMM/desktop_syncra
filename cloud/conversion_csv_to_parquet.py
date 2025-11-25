@@ -2,9 +2,9 @@ import polars as pl
 from pathlib import Path
 from datetime import datetime
 
-def convert_csv_to_parquet_simple(input_folder: str, output_base_path: str) -> None:
+def convert_csv_to_parquet_optimized(input_folder: str, output_base_path: str) -> None:
     """
-    Efficient CSV to Parquet converter with memory optimization.
+    CSV to Parquet converter with robust encoding handling.
     """
     separator = ";"
     output_folder = Path(output_base_path) / f"PARQUET_{datetime.now().strftime('%Y%m%d')} {Path(input_folder).name}"
@@ -16,44 +16,51 @@ def convert_csv_to_parquet_simple(input_folder: str, output_base_path: str) -> N
         try:
             print(f"📖 Processing: {file_path.name}")
             
-            # Memory-optimized reading configuration
+            # Configuración robusta para lectura
             read_options = {
                 "separator": separator,
-                "truncate_ragged_lines": True,
+                "truncate_ragged_lines": True,  # ✅ FIX: Para líneas con campos inconsistentes
                 "ignore_errors": True,
-                "infer_schema_length": 1000,  # Reduced for performance
-                "low_memory": True,           # Enable low memory mode
-                "rechunk": False,             # Avoid memory reallocation
+                "infer_schema_length": 1000,
+                "low_memory": True,
+                "rechunk": False,
             }
             
-            # Try encodings with minimal reading first
-            encodings = ['utf-8', 'latin1', 'iso-8859-1', 'windows-1252']
+            # Intentar diferentes encodings
+            encodings = ['utf-8', 'latin1', 'iso-8859-1', 'windows-1252', 'cp1252']
             df = None
             
             for encoding in encodings:
                 try:
-                    # Test encoding with just 3 rows
+                    # Probar encoding con pocas filas primero
                     df_test = pl.read_csv(
                         file_path,
-                        n_rows=3,
+                        n_rows=5,
                         **{**read_options, "encoding": encoding}
                     )
-                    # If encoding works, read full file
+                    # Si funciona, leer archivo completo
                     df = pl.read_csv(
                         file_path,
                         **{**read_options, "encoding": encoding}
                     )
+                    print(f"✅ {file_path.name}: Encoding {encoding} successful")
                     break
-                except Exception:
+                except Exception as e:
                     continue
             
             if df is None:
                 print(f"❌ {file_path.name}: Could not read with any encoding")
-                continue
+                # Intentar sin especificar encoding
+                try:
+                    df = pl.read_csv(file_path, **read_options)
+                    print(f"✅ {file_path.name}: Read without explicit encoding")
+                except Exception as e:
+                    print(f"❌ {file_path.name}: Final attempt failed - {str(e)[:100]}")
+                    continue
             
-            # Write with compression
+            # Escribir archivo Parquet
             output_file = output_folder / f"{file_path.stem}.parquet"
-            df.write_parquet(output_file, compression="zstd")  # Better compression than snappy
+            df.write_parquet(output_file, compression="zstd")
             
             print(f"✅ {file_path.name} -> {len(df):,} rows, {len(df.columns)} cols")
             
@@ -62,62 +69,10 @@ def convert_csv_to_parquet_simple(input_folder: str, output_base_path: str) -> N
     
     print("🎉 Conversion completed")
 
-# Ultra-efficient version for massive files
-def convert_large_csv_optimized(input_folder: str, output_base_path: str) -> None:
+# Versión con scan_csv para archivos muy grandes
+def convert_csv_lazy_optimized(input_folder: str, output_base_path: str) -> None:
     """
-    Stream processing for extremely large CSV files.
-    """
-    separator = ";"
-    output_folder = Path(output_base_path) / f"PARQUET_{datetime.now().strftime('%Y%m%d')} {Path(input_folder).name}"
-    output_folder.mkdir(parents=True, exist_ok=True)
-    
-    print(f"🔄 Stream converting: {input_folder} -> {output_folder}")
-    
-    for file_path in Path(input_folder).glob('*.csv'):
-        try:
-            print(f"📖 Streaming: {file_path.name}")
-            
-            # Detect encoding and schema first
-            encodings = ['utf-8', 'latin1', 'iso-8859-1', 'windows-1252']
-            found_encoding = None
-            
-            for encoding in encodings:
-                try:
-                    # Read minimal data to detect schema
-                    pl.read_csv(file_path, n_rows=10, separator=separator, encoding=encoding)
-                    found_encoding = encoding
-                    break
-                except Exception:
-                    continue
-            
-            if not found_encoding:
-                print(f"❌ {file_path.name}: Encoding detection failed")
-                continue
-            
-            # Stream process the entire file
-            df = pl.read_csv(
-                file_path,
-                separator=separator,
-                encoding=found_encoding,
-                low_memory=True,
-                infer_schema_length=1000,
-                ignore_errors=True
-            )
-            
-            output_file = output_folder / f"{file_path.stem}.parquet"
-            df.write_parquet(output_file, compression="zstd")
-            
-            print(f"✅ {file_path.name} -> {len(df):,} rows")
-            
-        except Exception as e:
-            print(f"❌ {file_path.name}: {str(e)[:100]}...")
-    
-    print("🎉 Stream conversion completed")
-
-# Most optimized version - uses scan_csv for maximum efficiency
-def convert_csv_scan_optimized(input_folder: str, output_base_path: str) -> None:
-    """
-    Most efficient version using lazy evaluation (scan_csv).
+    Usando evaluación perezosa para archivos grandes.
     """
     separator = ";"
     output_folder = Path(output_base_path) / f"PARQUET_{datetime.now().strftime('%Y%m%d')} {Path(input_folder).name}"
@@ -129,7 +84,6 @@ def convert_csv_scan_optimized(input_folder: str, output_base_path: str) -> None
         try:
             print(f"📖 Lazy processing: {file_path.name}")
             
-            # Use lazy evaluation for maximum memory efficiency
             encodings = ['utf-8', 'latin1', 'iso-8859-1', 'windows-1252']
             lf = None
             
@@ -140,9 +94,10 @@ def convert_csv_scan_optimized(input_folder: str, output_base_path: str) -> None
                         separator=separator,
                         encoding=encoding,
                         infer_schema_length=1000,
-                        low_memory=True
+                        low_memory=True,
+                        truncate_ragged_lines=True  # ✅ FIX
                     )
-                    # Test if it works by checking schema
+                    # Probar el schema
                     lf.schema
                     break
                 except Exception:
@@ -153,11 +108,10 @@ def convert_csv_scan_optimized(input_folder: str, output_base_path: str) -> None
                 print(f"❌ {file_path.name}: Could not read with any encoding")
                 continue
             
-            # Execute lazy frame and write to parquet
             output_file = output_folder / f"{file_path.stem}.parquet"
             lf.sink_parquet(output_file, compression="zstd")
             
-            # Get row count efficiently
+            # Contar filas eficientemente
             row_count = lf.select(pl.len()).collect().item()
             print(f"✅ {file_path.name} -> {row_count:,} rows")
             
@@ -165,15 +119,14 @@ def convert_csv_scan_optimized(input_folder: str, output_base_path: str) -> None
             print(f"❌ {file_path.name}: {str(e)[:100]}...")
     
     print("🎉 Lazy conversion completed")
-    
+
+# ✅ FUNCIÓN WRAPPER CORREGIDA - sin recursividad
 def convert_csv_to_parquet(input_folder: str, output_base_path: str) -> None:
     """
-    Wrapper function to choose the best conversion method based on file size.
+    Wrapper function para conversión CSV to Parquet.
     """
-    try:
-        convert_csv_to_parquet(input_folder, output_base_path)
-    except Exception:
-        try:
-            convert_large_csv_optimized(input_folder, output_base_path)
-        except Exception:
-            convert_csv_scan_optimized(input_folder, output_base_path)
+    use_lazy=False
+    if use_lazy:
+        convert_csv_lazy_optimized(input_folder, output_base_path)
+    else:
+        convert_csv_to_parquet_optimized(input_folder, output_base_path)
