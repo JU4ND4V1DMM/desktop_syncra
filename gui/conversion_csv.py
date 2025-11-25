@@ -3,31 +3,45 @@ import os
 from zipfile import BadZipFile
 
 def convert_xlsx_to_csv(folder_path):
-
+    """
+    Convierte archivos .xlsx a .csv en una carpeta y sus subcarpetas
+    """
+    
     if not os.path.exists(folder_path):
-        print(f"The folder {folder_path} does not exist.")
+        print(f"❌ La carpeta {folder_path} no existe.")
         return
     
-    for filename in os.listdir(folder_path):
+    print(f"🔍 Buscando archivos en: {folder_path}")
+    
+    # 📂 Recorre todas las subcarpetas recursivamente
+    for root, dirs, files in os.walk(folder_path):
+        print(f"📂 Explorando carpeta: {root}")
         
-        print(f"Processing file: {filename}")
-        
-        if filename.endswith(".xlsx"):
-
-            file_path = os.path.join(folder_path, filename)
-            csv_filename = filename.replace(".xlsx", ".csv")
-            csv_path = os.path.join(folder_path, csv_filename)
+        for filename in files:
             
-            try:
-                df = pd.read_excel(file_path, engine='openpyxl')
-                #df = pd.read_excel(file_path, engine='openpyxl', sheet_name='Base Castigo')
-                df.to_csv(csv_path, index=False, sep=';')
-                print(f"Converted: {file_path} to {csv_path}")
+            if filename.endswith(".xlsx"):
+                print(f"📊 Procesando archivo: {filename}")
+                
+                file_path = os.path.join(root, filename)
+                csv_filename = filename.replace(".xlsx", ".csv")
+                csv_path = os.path.join(root, csv_filename)
+                
+                try:
+                    # 📖 Leyendo archivo Excel
+                    df = pd.read_excel(file_path, engine='openpyxl')
+                    
+                    # 💾 Guardando como CSV
+                    df.to_csv(csv_path, index=False, sep=';')
+                    print(f"✅ Convertido: {filename} → {csv_filename}")
+                    
+                except BadZipFile:
+                    print(f"❌ Error: {filename} no es un archivo Excel válido")
+                    continue
 
-            except BadZipFile:
-                print(f"Error reading {file_path}: File is not a valid Excel file.")
-                continue
-
-            except Exception as e:
-                print(f"Error converting {file_path}: {e}")
-                continue
+                except Exception as e:
+                    print(f"⚠️ Error convirtiendo {filename}: {e}")
+                    continue
+            else:
+                print(f"⏭️ Saltando: {filename} (no es .xlsx)")
+    
+    print("🎉 ¡Conversión completada!")
