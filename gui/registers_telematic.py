@@ -45,8 +45,8 @@ COLUMNS_IVR_IPCOM = [
     'tarifa', 'tiempo facturado', 'nombre del código', 'leg id', 'connect time'
 ]
 
-
 COLUMNS_WISEBOT_BASE = ["campaña", "fecha_estado_final", "rut", "telefono", "estado_llamada", "tiempo_llamada"]
+COLUMNS_WISEBOT_BASE_2 = ["campaña", "fecha_llamada", "rut", "telefono", "estado_llamada", "tiempo_llamada"]
 COLUMNS_WISEBOT_BENEFITS = COLUMNS_WISEBOT_BASE + ["nombre", "apellido", "desea_beneficios"]
 COLUMNS_WISEBOT_AGREEMENT = COLUMNS_WISEBOT_BASE + ["id base", "fecha_acuerdo", "fecha_plazo"]
 COLUMNS_WISEBOT_TITULAR = COLUMNS_WISEBOT_BASE + ["marca"]
@@ -85,12 +85,12 @@ def classify_excel_file(file_path):
             all_headers.update(normalized_file_headers)
 
         else:
-            print(f"Error: Unsupported file type: {file_extension}. Must be .xls, .xlsx, or .csv.")
+            print(f"❌ Error: Unsupported file type: {file_extension}. Must be .xls, .xlsx, or .csv.")
             return "unsupported_type", []
 
         # 2. Classification Logic (Remains the same)
         present_headers = list(all_headers)
-        print(f"Columns found in '{file_path}': {present_headers}")
+        print(f"📊 Columns found in '{file_path}': {present_headers}")
         
         if all(col in present_headers for col in COLUMNS_WISEBOT_BENEFITS):
             return "wisebot_benefits", present_headers
@@ -99,6 +99,8 @@ def classify_excel_file(file_path):
         elif all(col in present_headers for col in COLUMNS_WISEBOT_TITULAR):
             return "wisebot_titular", present_headers
         elif all(col in present_headers for col in COLUMNS_WISEBOT_BASE):
+            return "wisebot_base", present_headers
+        elif all(col in present_headers for col in COLUMNS_WISEBOT_BASE_2):
             return "wisebot_base", present_headers
         elif all(col in present_headers for col in COLUMNS_SMS_SAEM):
             return "sms_saem", present_headers
@@ -114,10 +116,10 @@ def classify_excel_file(file_path):
         return "unknown", present_headers
 
     except FileNotFoundError:
-        print(f"Error: File '{file_path}' not found.")
+        print(f"❌ Error: File '{file_path}' not found.")
         return "file_error", []
     except Exception as e:
-        print(f"Error classifying file '{file_path}': {e}")
+        print(f"❌ Error classifying file '{file_path}': {e}")
         return "classification_error", []
 
 # --- Step 4: Processing Functions for Each Type ---
@@ -150,52 +152,56 @@ def process_sms_saem(file_path, present_headers):
     Logic to process SMS SAEM files.
     Includes aggregation of 'ejecutados' by 'fecha inicio' (day) and 'username'.
     """
-    print(f"*** Starting SMS SAEM processing for: '{file_path}' ***")
-    df = _read_and_normalize_excel_data(file_path)
-    print(f"  Consolidated rows: {len(df)}")
-    print("  Normalized columns:", df.columns.tolist())
+    print(f"🚀 Starting SMS SAEM processing for: '{file_path}'")
+    try:
+        df = _read_and_normalize_excel_data(file_path)
+        print(f"✅ Consolidated rows: {len(df)}")
+        print("📋 Normalized columns:", df.columns.tolist())
 
-    # Add a 'source_file_type' column to identify the data source later in the combined sheet
-    df['source_file_type'] = 'SMS_SAEM'
+        # Add a 'source_file_type' column to identify the data source later in the combined sheet
+        df['source_file_type'] = 'SMS_SAEM'
 
-    # --- SMS SAEM SPECIFIC AGGREGATION ---
-    if 'ejecutados' in df.columns and 'fecha inicio' in df.columns and 'username' in df.columns:
-        print("  Performing aggregation for 'ejecutados' by 'fecha inicio' and 'username'...")
+        # --- SMS SAEM SPECIFIC AGGREGATION ---
+        if 'ejecutados' in df.columns and 'fecha inicio' in df.columns and 'username' in df.columns:
+            print("📊 Performing aggregation for 'ejecutados' by 'fecha inicio' and 'username'...")
 
-        # 1. Convert 'ejecutados' to numeric, filling NaNs with 0
-        df['ejecutados'] = pd.to_numeric(df['ejecutados'], errors='coerce').fillna(0)
-        print("    'ejecutados' column converted to numeric and NaNs filled with 0.")
+            # 1. Convert 'ejecutados' to numeric, filling NaNs with 0
+            df['ejecutados'] = pd.to_numeric(df['ejecutados'], errors='coerce').fillna(0)
+            print("✅ 'ejecutados' column converted to numeric and NaNs filled with 0.")
 
-        # 2. Convert 'fecha inicio' to datetime and extract the date part
-        df['fecha inicio'] = pd.to_datetime(df['fecha inicio'], errors='coerce')
-        df['fecha_inicio_dia'] = df['fecha inicio'].dt.floor('H') # Get just the date (YYYY-MM-DD)
-        print("    'fecha inicio' converted to datetime and date part extracted.")
+            # 2. Convert 'fecha inicio' to datetime and extract the date part
+            df['fecha inicio'] = pd.to_datetime(df['fecha inicio'], errors='coerce')
+            df['fecha_inicio_dia'] = df['fecha inicio'].dt.floor('h') # Get just the date (YYYY-MM-DD)
+            print("✅ 'fecha inicio' converted to datetime and date part extracted.")
 
-        # Filter out rows where 'fecha_inicio_dia' is NaT (invalid date) before grouping
-        df_filtered_for_agg = df.dropna(subset=['fecha_inicio_dia'])
+            # Filter out rows where 'fecha_inicio_dia' is NaT (invalid date) before grouping
+            df_filtered_for_agg = df.dropna(subset=['fecha_inicio_dia'])
 
-        if not df_filtered_for_agg.empty:
-            # 3. Group by 'fecha_inicio_dia' and 'username' and sum 'ejecutados'
-            sms_saem_aggregated_df = df_filtered_for_agg.groupby(['fecha_inicio_dia', 'username'])['ejecutados'].sum().reset_index()
-            sms_saem_aggregated_df.rename(columns={'ejecutados': 'suma_ejecutados_diarios'}, inplace=True)
-            sms_saem_aggregated_df['contador_registros'] = sms_saem_aggregated_df['suma_ejecutados_diarios'].copy()
-            sms_saem_aggregated_df['source_file_type'] = 'SMS SAEM'
+            if not df_filtered_for_agg.empty:
+                # 3. Group by 'fecha_inicio_dia' and 'username' and sum 'ejecutados'
+                sms_saem_aggregated_df = df_filtered_for_agg.groupby(['fecha_inicio_dia', 'username'])['ejecutados'].sum().reset_index()
+                sms_saem_aggregated_df.rename(columns={'ejecutados': 'suma_ejecutados_diarios'}, inplace=True)
+                sms_saem_aggregated_df['contador_registros'] = sms_saem_aggregated_df['suma_ejecutados_diarios'].copy()
+                sms_saem_aggregated_df['source_file_type'] = 'SMS SAEM'
 
-            print("\n  Aggregated SMS SAEM Data:")
-            print(sms_saem_aggregated_df.to_string())
+                print("\n📈 Aggregated SMS SAEM Data:")
+                print(sms_saem_aggregated_df.to_string())
 
-            print(f"*** SMS SAEM processing finished. Returning original and aggregated data. ***\n" + "-" * 50)
-            return [df, sms_saem_aggregated_df] # Return a list of DataFrames
+                print(f"✅ SMS SAEM processing finished. Returning original and aggregated data.")
+                return [df, sms_saem_aggregated_df] # Return a list of DataFrames
+            else:
+                print("⚠️ No valid data remaining after filtering for aggregation.")
+                print(f"✅ SMS SAEM processing finished. Returning original data only.")
+                return df # Return original DataFrame if aggregation failed
+
         else:
-            print("  No valid data remaining after filtering for aggregation.")
-            print(f"*** SMS SAEM processing finished. Returning original data only. ***\n" + "-" * 50)
-            return df # Return original DataFrame if aggregation failed
+            print("⚠️ Skipping aggregation: 'ejecutados', 'fecha inicio', or 'username' column(s) not found.")
 
-    else:
-        print("  Skipping aggregation: 'ejecutados', 'fecha inicio', or 'username' column(s) not found.")
-
-    print(f"*** SMS SAEM processing finished. ***\n" + "-" * 50)
-    return df
+        print(f"✅ SMS SAEM processing finished.")
+        return df
+    except Exception as e:
+        print(f"❌ Error processing SMS SAEM file '{file_path}': {e}")
+        return None
 
 def process_ivr_saem(file_path, present_headers):
     """
@@ -203,97 +209,100 @@ def process_ivr_saem(file_path, present_headers):
     Includes aggregation of 'ejecutados' by 'fecha programada' (day) and a new
     categorical column derived from 'nombre campaña' and the 'Estandar/Personalizado' column.
     """
-    print(f"*** Starting IVR SAEM processing for: '{file_path}' ***")
-    df = _read_and_normalize_excel_data(file_path)
-    print(f"  Consolidated rows: {len(df)}")
-    print("  Normalized columns:", df.columns.tolist())
+    print(f"🚀 Starting IVR SAEM processing for: '{file_path}'")
+    try:
+        df = _read_and_normalize_excel_data(file_path)
+        print(f"✅ Consolidated rows: {len(df)}")
+        print("📋 Normalized columns:", df.columns.tolist())
 
-    df['source_file_type'] = 'IVR_SAEM' # Mark the original data
+        df['source_file_type'] = 'IVR_SAEM' # Mark the original data
 
-    # --- IVR SAEM SPECIFIC AGGREGATION ---
-    required_cols = ['fecha programada', 'ejecutados', 'nombre campaña', 'unnamed: 23']
-    # Identify the 'Estandar'/'Personalizado' column (assuming it's a string column
-    # that might be unnamed or have a generic name like 'unnamed: x')
-    standard_personalizado_col = None
-    for col in df.columns:
-        # Check if the column contains 'estandar' or 'personalizado' (case-insensitive)
-        # and if it's a string type
-        if df[col].astype(str).str.contains(r'estandar|personalizado', case=False, na=False).any() and col != 'nombre campaña':
-            standard_personalizado_col = col
-            print(f"  Identified 'Estandar/Personalizado' column as: '{standard_personalizado_col}'")
-            required_cols.append(standard_personalizado_col)
-            break
-    
-    if not all(col in df.columns for col in required_cols):
-        missing_cols = [col for col in required_cols if col not in df.columns]
-        print(f"  Skipping aggregation: Missing one or more required columns: {missing_cols}.")
-        print(f"*** IVR SAEM processing finished. Returning original data only. ***\n" + "-" * 50)
-        return df
+        # --- IVR SAEM SPECIFIC AGGREGATION ---
+        required_cols = ['fecha programada', 'ejecutados', 'nombre campaña', 'unnamed: 23']
+        # Identify the 'Estandar'/'Personalizado' column (assuming it's a string column
+        # that might be unnamed or have a generic name like 'unnamed: x')
+        standard_personalizado_col = None
+        for col in df.columns:
+            # Check if the column contains 'estandar' or 'personalizado' (case-insensitive)
+            # and if it's a string type
+            if df[col].astype(str).str.contains(r'estandar|personalizado', case=False, na=False).any() and col != 'nombre campaña':
+                standard_personalizado_col = col
+                print(f"🔍 Identified 'Estandar/Personalizado' column as: '{standard_personalizado_col}'")
+                required_cols.append(standard_personalizado_col)
+                break
+        
+        if not all(col in df.columns for col in required_cols):
+            missing_cols = [col for col in required_cols if col not in df.columns]
+            print(f"⚠️ Skipping aggregation: Missing one or more required columns: {missing_cols}.")
+            print(f"✅ IVR SAEM processing finished. Returning original data only.")
+            return df
 
-    print("  Performing aggregation for 'ejecutados' by 'fecha programada', 'campaign_group'...")
+        print("📊 Performing aggregation for 'ejecutados' by 'fecha programada', 'campaign_group'...")
 
-    # 1. Convert 'ejecutados' to numeric, filling NaNs with 0
-    df['ejecutados'] = pd.to_numeric(df['ejecutados'], errors='coerce').fillna(0)
-    print("    'ejecutados' column converted to numeric and NaNs filled with 0.")
+        # 1. Convert 'ejecutados' to numeric, filling NaNs with 0
+        df['ejecutados'] = pd.to_numeric(df['ejecutados'], errors='coerce').fillna(0)
+        print("✅ 'ejecutados' column converted to numeric and NaNs filled with 0.")
 
-    # 2. Convert 'fecha programada' to datetime and extract the date part
-    df['fecha programada'] = pd.to_datetime(df['fecha programada'], errors='coerce')
-    df['fecha_programada_dia'] = df['fecha programada'].dt.floor('H') # Get just the date (YYYY-MM-DD)
-    print("    'fecha programada' converted to datetime and date part extracted.")
+        # 2. Convert 'fecha programada' to datetime and extract the date part
+        df['fecha programada'] = pd.to_datetime(df['fecha programada'], errors='coerce')
+        df['fecha_programada_dia'] = df['fecha programada'].dt.floor('h') # Get just the date (YYYY-MM-DD)
+        print("✅ 'fecha programada' converted to datetime and date part extracted.")
 
-    # 3. Create the 'campaign_group' column based on 'nombre campaña'
-    df['nombre campaña_lower'] = df['nombre campaña'].astype(str).str.lower()
-    
-    # Define the mapping
-    campaign_mapping = {
-        'pash': ['pash'],
-        'gmac': ['gm', 'insoluto', 'chevrolet'],
-        'claro': ['210', '0_', 'rr', 'ascard', 'bscs', 'prechurn', 'churn', 'potencial', 'prepotencial', 'descuento', 'esp', '30_', 'prees', 'preord'],
-        'puntored': ['puntored'],
-        'crediveci': ['crediveci'],
-        'yadinero': ['dinero'],
-        'qnt': ['qnt'],
-        'habi': ['habi'],
-        'payjoy': ['payjoy', 'pay joy']
-    }
+        # 3. Create the 'campaign_group' column based on 'nombre campaña'
+        df['nombre campaña_lower'] = df['nombre campaña'].astype(str).str.lower()
+        
+        # Define the mapping
+        campaign_mapping = {
+            'pash': ['pash'],
+            'gmac': ['gm', 'insoluto', 'chevrolet'],
+            'claro': ['210', '0_', 'rr', 'ascard', 'bscs', 'prechurn', 'churn', 'potencial', 'prepotencial', 'descuento', 'esp', '30_', 'prees', 'preord'],
+            'puntored': ['puntored'],
+            'crediveci': ['crediveci'],
+            'yadinero': ['dinero'],
+            'qnt': ['qnt'],
+            'habi': ['habi'],
+            'payjoy': ['payjoy', 'pay joy']
+        }
 
-    df['campaign_group'] = df['nombre campaña'] # Default to original name
-    for group, keywords in campaign_mapping.items():
-        for keyword in keywords:
-            # Use contains for partial matches
-            df.loc[df['nombre campaña_lower'].str.contains(keyword, na=False), 'campaign_group'] = group
-    
-    print("    'campaign_group' column created based on 'nombre campaña'.")
-    df.drop(columns=['nombre campaña_lower'], inplace=True) # Clean up helper column
+        df['campaign_group'] = df['nombre campaña'] # Default to original name
+        for group, keywords in campaign_mapping.items():
+            for keyword in keywords:
+                # Use contains for partial matches
+                df.loc[df['nombre campaña_lower'].str.contains(keyword, na=False), 'campaign_group'] = group
+        
+        print("✅ 'campaign_group' column created based on 'nombre campaña'.")
+        df.drop(columns=['nombre campaña_lower'], inplace=True) # Clean up helper column
 
-    # 4. Filter out rows where 'fecha_programada_dia' is NaT (invalid date) before grouping
-    df_filtered_for_agg = df.dropna(subset=['fecha_programada_dia'])
+        # 4. Filter out rows where 'fecha_programada_dia' is NaT (invalid date) before grouping
+        df_filtered_for_agg = df.dropna(subset=['fecha_programada_dia'])
 
-    if not df_filtered_for_agg.empty:
-        # Group by the date, the campaign group, and the standard/personalizado column
-        ivr_saem_aggregated_df = df_filtered_for_agg.groupby(
-            ['fecha_programada_dia', 'campaign_group']
-        )['ejecutados'].sum().reset_index()
+        if not df_filtered_for_agg.empty:
+            # Group by the date, the campaign group, and the standard/personalizado column
+            ivr_saem_aggregated_df = df_filtered_for_agg.groupby(
+                ['fecha_programada_dia', 'campaign_group']
+            )['ejecutados'].sum().reset_index()
 
-        ivr_saem_aggregated_df.rename(
-            columns={
-                'ejecutados': 'suma_ejecutados_diarios',
-            },
-            inplace=True
-        )
-        ivr_saem_aggregated_df['contador_registros'] = ivr_saem_aggregated_df['suma_ejecutados_diarios'].copy()
-        ivr_saem_aggregated_df['source_file_type'] = 'IVR SAEM'
+            ivr_saem_aggregated_df.rename(
+                columns={
+                    'ejecutados': 'suma_ejecutados_diarios',
+                },
+                inplace=True
+            )
+            ivr_saem_aggregated_df['contador_registros'] = ivr_saem_aggregated_df['suma_ejecutados_diarios'].copy()
+            ivr_saem_aggregated_df['source_file_type'] = 'IVR SAEM'
 
-        print("\n  Aggregated IVR SAEM Data:")
-        print(ivr_saem_aggregated_df.to_string())
+            print("\n📈 Aggregated IVR SAEM Data:")
+            print(ivr_saem_aggregated_df.to_string())
 
-        print(f"*** IVR SAEM processing finished. Returning original and aggregated data. ***\n" + "-" * 50)
-        return [df, ivr_saem_aggregated_df] # Return a list of DataFrames
-    else:
-        print("  No valid data remaining after filtering for aggregation.")
-        print(f"*** IVR SAEM processing finished. Returning original data only. ***\n" + "-" * 50)
-        return df # Return original DataFrame if aggregation failed
-    
+            print(f"✅ IVR SAEM processing finished. Returning original and aggregated data.")
+            return [df, ivr_saem_aggregated_df] # Return a list of DataFrames
+        else:
+            print("⚠️ No valid data remaining after filtering for aggregation.")
+            print(f"✅ IVR SAEM processing finished. Returning original data only.")
+            return df # Return original DataFrame if aggregation failed
+    except Exception as e:
+        print(f"❌ Error processing IVR SAEM file '{file_path}': {e}")
+        return None
     
 def process_ivr_ipcom(file_path, present_headers):
     """
@@ -301,150 +310,158 @@ def process_ivr_ipcom(file_path, present_headers):
     Includes aggregation of 'ejecutados' by 'fecha programada' (day) and a new
     categorical column derived from 'nombre campaña' and the 'Estandar/Personalizado' column.
     """
-    print(f"*** Starting IVR IPCOM processing for: '{file_path}' ***")
-    df = _read_and_normalize_csv_data(file_path)
-    print(f"  Consolidated rows: {len(df)}")
-    print("  Normalized columns:", df.columns.tolist())
+    print(f"🚀 Starting IVR IPCOM processing for: '{file_path}'")
+    try:
+        df = _read_and_normalize_csv_data(file_path)
+        print(f"✅ Consolidated rows: {len(df)}")
+        print("📋 Normalized columns:", df.columns.tolist())
 
-    df['source_file_type'] = 'IVR_IPCOM' # Mark the original data
+        df['source_file_type'] = 'IVR_IPCOM' # Mark the original data
 
-    # --- IVR IPCOM SPECIFIC AGGREGATION ---
-    required_cols = ['connect time', 'tiempo facturado', 'account name', 'costo']
-    
-    if not all(col in df.columns for col in required_cols):
-        missing_cols = [col for col in required_cols if col not in df.columns]
-        print(f"  Skipping aggregation: Missing one or more required columns: {missing_cols}.")
-        print(f"*** IVR IPCOM processing finished. Returning original data only. ***\n" + "-" * 50)
-        return df
+        # --- IVR IPCOM SPECIFIC AGGREGATION ---
+        required_cols = ['connect time', 'tiempo facturado', 'account name', 'costo']
+        
+        if not all(col in df.columns for col in required_cols):
+            missing_cols = [col for col in required_cols if col not in df.columns]
+            print(f"⚠️ Skipping aggregation: Missing one or more required columns: {missing_cols}.")
+            print(f"✅ IVR IPCOM processing finished. Returning original data only.")
+            return df
 
-    print("  Performing aggregation for 'ejecutados' by 'fecha programada', 'campaign_group'...")
+        print("📊 Performing aggregation for 'ejecutados' by 'fecha programada', 'campaign_group'...")
 
-    # 1. Convert 'ejecutados' to numeric, filling NaNs with 0
-    df['ejecutados'] = pd.to_numeric(df['tiempo facturado'], errors='coerce').fillna(0)
-    print("    'ejecutados' column converted to numeric and NaNs filled with 0.")
+        # 1. Convert 'ejecutados' to numeric, filling NaNs with 0
+        df['ejecutados'] = pd.to_numeric(df['tiempo facturado'], errors='coerce').fillna(0)
+        print("✅ 'ejecutados' column converted to numeric and NaNs filled with 0.")
 
-    df['costo'] = pd.to_numeric(df['costo'], errors='coerce').fillna(0)
-    print("    'costo' column converted to numeric and NaNs filled with 0.")
+        df['costo'] = pd.to_numeric(df['costo'], errors='coerce').fillna(0)
+        print("✅ 'costo' column converted to numeric and NaNs filled with 0.")
 
-    # 2. Convert 'fecha programada' to datetime and extract the date part
-    df['fecha programada'] = pd.to_datetime(df['connect time'], errors='coerce')
-    df['fecha_programada_dia'] = df['fecha programada'].dt.floor('H') # Get just the date (YYYY-MM-DD)
-    print("    'fecha programada' converted to datetime and date part extracted.")
+        # 2. Convert 'fecha programada' to datetime and extract the date part
+        df['fecha programada'] = pd.to_datetime(df['connect time'], errors='coerce')
+        df['fecha_programada_dia'] = df['fecha programada'].dt.floor('h') # Get just the date (YYYY-MM-DD)
+        print("✅ 'fecha programada' converted to datetime and date part extracted.")
 
-    # 3. Create the 'campaign_group' column based on 'nombre campaña'
-    df['nombre campaña_lower'] = df['account name'].astype(str).str.lower()
-    
-    # Define the mapping
-    campaign_mapping = {
-        'pash': ['pash'],
-        'gmac': ['gm', 'insoluto', 'chevrolet'],
-        'claro': ['210', '0_30', 'rr', 'ascard', 'bscs', 'prechurn', 'churn', 'potencial', 'prepotencial', 'descuento', 'esp', '30_', 'prees', 'preord'],
-        'puntored': ['puntored'],
-        'crediveci': ['crediveci'],
-        'yadinero': ['dinero'],
-        'qnt': ['qnt'],
-        'habi': ['habi'],
-        'payjoy': ['payjoy', 'pay joy']
-    }
+        # 3. Create the 'campaign_group' column based on 'nombre campaña'
+        df['nombre campaña_lower'] = df['account name'].astype(str).str.lower()
+        
+        # Define the mapping
+        campaign_mapping = {
+            'pash': ['pash'],
+            'gmac': ['gm', 'insoluto', 'chevrolet'],
+            'claro': ['210', '0_30', 'rr', 'ascard', 'bscs', 'prechurn', 'churn', 'potencial', 'prepotencial', 'descuento', 'esp', '30_', 'prees', 'preord'],
+            'puntored': ['puntored'],
+            'crediveci': ['crediveci'],
+            'yadinero': ['dinero'],
+            'qnt': ['qnt'],
+            'habi': ['habi'],
+            'payjoy': ['payjoy', 'pay joy']
+        }
 
-    df['campaign_group'] = df['account name'] # Default to original name
-    for group, keywords in campaign_mapping.items():
-        for keyword in keywords:
-            # Use contains for partial matches
-            df.loc[df['nombre campaña_lower'].str.contains(keyword, na=False), 'campaign_group'] = group
-    
-    print("    'campaign_group' column created based on 'nombre campaña'.")
-    df.drop(columns=['nombre campaña_lower'], inplace=True) # Clean up helper column
+        df['campaign_group'] = df['account name'] # Default to original name
+        for group, keywords in campaign_mapping.items():
+            for keyword in keywords:
+                # Use contains for partial matches
+                df.loc[df['nombre campaña_lower'].str.contains(keyword, na=False), 'campaign_group'] = group
+        
+        print("✅ 'campaign_group' column created based on 'nombre campaña'.")
+        df.drop(columns=['nombre campaña_lower'], inplace=True) # Clean up helper column
 
-    # 4. Filter out rows where 'fecha_programada_dia' is NaT (invalid date) before grouping
-    df_filtered_for_agg = df.dropna(subset=['fecha_programada_dia'])
+        # 4. Filter out rows where 'fecha_programada_dia' is NaT (invalid date) before grouping
+        df_filtered_for_agg = df.dropna(subset=['fecha_programada_dia'])
 
-    if not df_filtered_for_agg.empty:
-        # Group by the date, the campaign group, and the standard/personalizado column
-        ivr_ipcom_aggregated_df = df_filtered_for_agg.groupby(
-            ['fecha_programada_dia', 'campaign_group'] 
-        ).agg(
-            
-            suma_ejecutados_diarios=('ejecutados', 'sum'),
-            suma_costo_diario=('costo', 'sum') 
-        ).reset_index()
+        if not df_filtered_for_agg.empty:
+            # Group by the date, the campaign group, and the standard/personalizado column
+            ivr_ipcom_aggregated_df = df_filtered_for_agg.groupby(
+                ['fecha_programada_dia', 'campaign_group'] 
+            ).agg(
+                
+                suma_ejecutados_diarios=('ejecutados', 'sum'),
+                suma_costo_diario=('costo', 'sum') 
+            ).reset_index()
 
-        ivr_ipcom_aggregated_df.rename(
-            columns={
-                'ejecutados': 'suma_ejecutados_diarios',
-            },
-            inplace=True
-        )
-        ivr_ipcom_aggregated_df['contador_registros'] = ivr_ipcom_aggregated_df['suma_ejecutados_diarios'].copy()
-        ivr_ipcom_aggregated_df['source_file_type'] = 'IVR IPCOM'
+            ivr_ipcom_aggregated_df.rename(
+                columns={
+                    'ejecutados': 'suma_ejecutados_diarios',
+                },
+                inplace=True
+            )
+            ivr_ipcom_aggregated_df['contador_registros'] = ivr_ipcom_aggregated_df['suma_ejecutados_diarios'].copy()
+            ivr_ipcom_aggregated_df['source_file_type'] = 'IVR IPCOM'
 
-        print("\n  Aggregated IVR IPCOM Data:")
-        print(ivr_ipcom_aggregated_df.to_string())
+            print("\n📈 Aggregated IVR IPCOM Data:")
+            print(ivr_ipcom_aggregated_df.to_string())
 
-        print(f"*** IVR IPCOM processing finished. Returning original and aggregated data. ***\n" + "-" * 50)
-        return [df, ivr_ipcom_aggregated_df] # Return a list of DataFrames
-    else:
-        print("  No valid data remaining after filtering for aggregation.")
-        print(f"*** IVR IPCOM processing finished. Returning original data only. ***\n" + "-" * 50)
-        return df # Return original DataFrame if aggregation failed
+            print(f"✅ IVR IPCOM processing finished. Returning original and aggregated data.")
+            return [df, ivr_ipcom_aggregated_df] # Return a list of DataFrames
+        else:
+            print("⚠️ No valid data remaining after filtering for aggregation.")
+            print(f"✅ IVR IPCOM processing finished. Returning original data only.")
+            return df # Return original DataFrame if aggregation failed
+    except Exception as e:
+        print(f"❌ Error processing IVR IPCOM file '{file_path}': {e}")
+        return None
 
 def process_email_masivian(file_path, present_headers):
     """
     Logic to process EMAIL MASIVIAN files.
     Includes aggregation of 'procesados' by 'fecha de envío' (day) and 'remitente'.
     """
-    print(f"*** Starting EMAIL MASIVIAN processing for: '{file_path}' ***")
-    df = _read_and_normalize_excel_data(file_path)
-    print(f"  Consolidated rows: {len(df)}")
-    print("  Normalized columns:", df.columns.tolist())
+    print(f"🚀 Starting EMAIL MASIVIAN processing for: '{file_path}'")
+    try:
+        df = _read_and_normalize_excel_data(file_path)
+        print(f"✅ Consolidated rows: {len(df)}")
+        print("📋 Normalized columns:", df.columns.tolist())
 
-    df['source_file_type'] = 'EMAIL_MASIVIAN' # Mark the original data
+        df['source_file_type'] = 'EMAIL_MASIVIAN' # Mark the original data
 
-    # --- EMAIL MASIVIAN SPECIFIC AGGREGATION ---
-    required_cols = ['fecha de envío', 'procesados', 'remitente']
-    
-    if not all(col in df.columns for col in required_cols):
-        missing_cols = [col for col in required_cols if col not in df.columns]
-        print(f"  Skipping aggregation: Missing one or more required columns: {missing_cols}.")
-        print(f"*** EMAIL MASIVIAN processing finished. Returning original data only. ***\n" + "-" * 50)
-        return df
+        # --- EMAIL MASIVIAN SPECIFIC AGGREGATION ---
+        required_cols = ['fecha de envío', 'procesados', 'remitente']
+        
+        if not all(col in df.columns for col in required_cols):
+            missing_cols = [col for col in required_cols if col not in df.columns]
+            print(f"⚠️ Skipping aggregation: Missing one or more required columns: {missing_cols}.")
+            print(f"✅ EMAIL MASIVIAN processing finished. Returning original data only.")
+            return df
 
-    print("  Performing aggregation for 'procesados' by 'fecha de envío' and 'remitente'...")
+        print("📊 Performing aggregation for 'procesados' by 'fecha de envío' and 'remitente'...")
 
-    # 1. Convert 'procesados' to numeric, filling NaNs with 0
-    df['procesados'] = pd.to_numeric(df['procesados'], errors='coerce').fillna(0)
-    print("    'procesados' column converted to numeric and NaNs filled with 0.")
+        # 1. Convert 'procesados' to numeric, filling NaNs with 0
+        df['procesados'] = pd.to_numeric(df['procesados'], errors='coerce').fillna(0)
+        print("✅ 'procesados' column converted to numeric and NaNs filled with 0.")
 
-    # 2. Convert 'fecha de envío' to datetime and extract the date part
-    df['fecha de envío'] = pd.to_datetime(df['fecha de envío'], errors='coerce')
-    df['fecha_envio_dia'] = df['fecha de envío'].dt.floor('H') # Get just the date (YYYY-MM-DD HH)
-    print("    'fecha de envío' converted to datetime and date part extracted.")
+        # 2. Convert 'fecha de envío' to datetime and extract the date part
+        df['fecha de envío'] = pd.to_datetime(df['fecha de envío'], errors='coerce')
+        df['fecha_envio_dia'] = df['fecha de envío'].dt.floor('h') # Get just the date (YYYY-MM-DD HH)
+        print("✅ 'fecha de envío' converted to datetime and date part extracted.")
 
-    # 3. Filter out rows where 'fecha_envio_dia' is NaT (invalid date) before grouping
-    df_filtered_for_agg = df.dropna(subset=['fecha_envio_dia'])
+        # 3. Filter out rows where 'fecha_envio_dia' is NaT (invalid date) before grouping
+        df_filtered_for_agg = df.dropna(subset=['fecha_envio_dia'])
 
-    if not df_filtered_for_agg.empty:
-        # Group by the date and the remitente and sum 'procesados'
-        email_masivian_aggregated_df = df_filtered_for_agg.groupby(
-            ['fecha_envio_dia', 'remitente']
-        )['procesados'].sum().reset_index()
+        if not df_filtered_for_agg.empty:
+            # Group by the date and the remitente and sum 'procesados'
+            email_masivian_aggregated_df = df_filtered_for_agg.groupby(
+                ['fecha_envio_dia', 'remitente']
+            )['procesados'].sum().reset_index()
 
-        email_masivian_aggregated_df.rename(
-            columns={'procesados': 'suma_procesados_diarios'},
-            inplace=True
-        )
-        email_masivian_aggregated_df['contador_registros'] = email_masivian_aggregated_df['suma_procesados_diarios'].copy()
-        email_masivian_aggregated_df['source_file_type'] = 'EMAIL MASIVIAN'
+            email_masivian_aggregated_df.rename(
+                columns={'procesados': 'suma_procesados_diarios'},
+                inplace=True
+            )
+            email_masivian_aggregated_df['contador_registros'] = email_masivian_aggregated_df['suma_procesados_diarios'].copy()
+            email_masivian_aggregated_df['source_file_type'] = 'EMAIL MASIVIAN'
 
-        print("\n  Aggregated EMAIL MASIVIAN Data:")
-        print(email_masivian_aggregated_df.to_string())
+            print("\n📈 Aggregated EMAIL MASIVIAN Data:")
+            print(email_masivian_aggregated_df.to_string())
 
-        print(f"*** EMAIL MASIVIAN processing finished. Returning original and aggregated data. ***\n" + "-" * 50)
-        return [df, email_masivian_aggregated_df] # Return a list of DataFrames
-    else:
-        print("  No valid data remaining after filtering for aggregation.")
-        print(f"*** EMAIL MASIVIAN processing finished. Returning original data only. ***\n" + "-" * 50)
-        return df # Return original DataFrame if aggregation failed
+            print(f"✅ EMAIL MASIVIAN processing finished. Returning original and aggregated data.")
+            return [df, email_masivian_aggregated_df] # Return a list of DataFrames
+        else:
+            print("⚠️ No valid data remaining after filtering for aggregation.")
+            print(f"✅ EMAIL MASIVIAN processing finished. Returning original data only.")
+            return df # Return original DataFrame if aggregation failed
+    except Exception as e:
+        print(f"❌ Error processing EMAIL MASIVIAN file '{file_path}': {e}")
+        return None
 
 def process_sms_masivian(file_path, present_headers):
     """
@@ -452,84 +469,88 @@ def process_sms_masivian(file_path, present_headers):
     Includes aggregation of 'total procesados' by 'fecha programado' (day)
     and a new categorical column derived from 'campaña'.
     """
-    print(f"*** Starting SMS MASIVIAN processing for: '{file_path}' ***")
-    df = _read_and_normalize_excel_data(file_path)
-    print(f"  Consolidated rows: {len(df)}")
-    print("  Normalized columns:", df.columns.tolist())
+    print(f"🚀 Starting SMS MASIVIAN processing for: '{file_path}'")
+    try:
+        df = _read_and_normalize_excel_data(file_path)
+        print(f"✅ Consolidated rows: {len(df)}")
+        print("📋 Normalized columns:", df.columns.tolist())
 
-    df['source_file_type'] = 'SMS_MASIVIAN' # Mark the original data
+        df['source_file_type'] = 'SMS_MASIVIAN' # Mark the original data
 
-    # --- SMS MASIVIAN SPECIFIC AGGREGATION ---
-    required_cols = ['fecha programado', 'total procesados', 'campaña']
-    
-    if not all(col in df.columns for col in required_cols):
-        missing_cols = [col for col in required_cols if col not in df.columns]
-        print(f"  Skipping aggregation: Missing one or more required columns: {missing_cols}.")
-        print(f"*** SMS MASIVIAN processing finished. Returning original data only. ***\n" + "-" * 50)
-        return df
+        # --- SMS MASIVIAN SPECIFIC AGGREGATION ---
+        required_cols = ['fecha programado', 'total procesados', 'campaña']
+        
+        if not all(col in df.columns for col in required_cols):
+            missing_cols = [col for col in required_cols if col not in df.columns]
+            print(f"⚠️ Skipping aggregation: Missing one or more required columns: {missing_cols}.")
+            print(f"✅ SMS MASIVIAN processing finished. Returning original data only.")
+            return df
 
-    print("  Performing aggregation for 'total procesados' by 'fecha programado' and 'campaign_group'...")
+        print("📊 Performing aggregation for 'total procesados' by 'fecha programado' and 'campaign_group'...")
 
-    # 1. Convert 'total procesados' to numeric, filling NaNs with 0
-    df['total procesados'] = pd.to_numeric(df['total procesados'], errors='coerce').fillna(0)
-    print("    'total procesados' column converted to numeric and NaNs filled with 0.")
+        # 1. Convert 'total procesados' to numeric, filling NaNs with 0
+        df['total procesados'] = pd.to_numeric(df['total procesados'], errors='coerce').fillna(0)
+        print("✅ 'total procesados' column converted to numeric and NaNs filled with 0.")
 
-    # 2. Convert 'fecha programado' to datetime and extract the date part
-    df['fecha programado'] = pd.to_datetime(df['fecha programado'], errors='coerce')
-    df['fecha_programado_dia'] = df['fecha programado'].dt.floor('H') # Get just the date (YYYY-MM-DD HH)
-    print("    'fecha programado' converted to datetime and date part extracted.")
+        # 2. Convert 'fecha programado' to datetime and extract the date part
+        df['fecha programado'] = pd.to_datetime(df['fecha programado'], errors='coerce')
+        df['fecha_programado_dia'] = df['fecha programado'].dt.floor('h') # Get just the date (YYYY-MM-DD HH)
+        print("✅ 'fecha programado' converted to datetime and date part extracted.")
 
-    # 3. Create the 'campaign_group' column based on 'campaña'
-    df['campaña_lower'] = df['campaña'].astype(str).str.lower()
-    
-    # Define the mapping (provided in the prompt)
-    campaign_mapping = {
-        'pash': ['pash'],
-        'gmac': ['gm', 'insoluto', 'chevrolet'],
-        'claro': ['210', '_30', 'rr', 'ascard', 'bscs', 'prechurn', 'churn', 'potencial', 'prepotencial', 'especial'],
-        'puntored': ['puntored'],
-        'crediveci': ['crediveci'],
-        'yadinero': ['dinero'],
-        'qnt': ['qnt'],
-        'habi': ['habi'],
-        'payjoy': ['payjoy', 'pay joy']
-    }
+        # 3. Create the 'campaign_group' column based on 'campaña'
+        df['campaña_lower'] = df['campaña'].astype(str).str.lower()
+        
+        # Define the mapping (provided in the prompt)
+        campaign_mapping = {
+            'pash': ['pash'],
+            'gmac': ['gm', 'insoluto', 'chevrolet'],
+            'claro': ['210', '_30', 'rr', 'ascard', 'bscs', 'prechurn', 'churn', 'potencial', 'prepotencial', 'especial'],
+            'puntored': ['puntored'],
+            'crediveci': ['crediveci'],
+            'yadinero': ['dinero'],
+            'qnt': ['qnt'],
+            'habi': ['habi'],
+            'payjoy': ['payjoy', 'pay joy']
+        }
 
-    df['campaign_group'] = df['campaña'] # Default to original name
-    for group, keywords in campaign_mapping.items():
-        for keyword in keywords:
-            # Use contains for partial matches
-            df.loc[df['campaña_lower'].str.contains(keyword, na=False), 'campaign_group'] = group
-    
-    print("    'campaign_group' column created based on 'campaña'.")
-    df.drop(columns=['campaña_lower'], inplace=True) # Clean up helper column
+        df['campaign_group'] = df['campaña'] # Default to original name
+        for group, keywords in campaign_mapping.items():
+            for keyword in keywords:
+                # Use contains for partial matches
+                df.loc[df['campaña_lower'].str.contains(keyword, na=False), 'campaign_group'] = group
+        
+        print("✅ 'campaign_group' column created based on 'campaña'.")
+        df.drop(columns=['campaña_lower'], inplace=True) # Clean up helper column
 
-    # 4. Filter out rows where 'fecha_programado_dia' is NaT (invalid date) before grouping
-    df_filtered_for_agg = df.dropna(subset=['fecha_programado_dia'])
+        # 4. Filter out rows where 'fecha_programado_dia' is NaT (invalid date) before grouping
+        df_filtered_for_agg = df.dropna(subset=['fecha_programado_dia'])
 
-    if not df_filtered_for_agg.empty:
-        # Group by the date and the campaign group and sum 'total procesados'
-        sms_masivian_aggregated_df = df_filtered_for_agg.groupby(
-            ['fecha_programado_dia', 'campaign_group']
-        )['total procesados'].sum().reset_index()
+        if not df_filtered_for_agg.empty:
+            # Group by the date and the campaign group and sum 'total procesados'
+            sms_masivian_aggregated_df = df_filtered_for_agg.groupby(
+                ['fecha_programado_dia', 'campaign_group']
+            )['total procesados'].sum().reset_index()
 
-        sms_masivian_aggregated_df.rename(
-            columns={'total procesados': 'suma_total_procesados_diarios'},
-            inplace=True
-        )
-    
-        sms_masivian_aggregated_df['contador_registros'] = sms_masivian_aggregated_df['suma_total_procesados_diarios'].copy()
-        sms_masivian_aggregated_df['source_file_type'] = 'SMS MASIVIAN'
+            sms_masivian_aggregated_df.rename(
+                columns={'total procesados': 'suma_total_procesados_diarios'},
+                inplace=True
+            )
+        
+            sms_masivian_aggregated_df['contador_registros'] = sms_masivian_aggregated_df['suma_total_procesados_diarios'].copy()
+            sms_masivian_aggregated_df['source_file_type'] = 'SMS MASIVIAN'
 
-        print("\n  Aggregated SMS MASIVIAN Data:")
-        print(sms_masivian_aggregated_df.to_string())
+            print("\n📈 Aggregated SMS MASIVIAN Data:")
+            print(sms_masivian_aggregated_df.to_string())
 
-        print(f"*** SMS MASIVIAN processing finished. Returning original and aggregated data. ***\n" + "-" * 50)
-        return [df, sms_masivian_aggregated_df] # Return a list of DataFrames
-    else:
-        print("  No valid data remaining after filtering for aggregation.")
-        print(f"*** SMS MASIVIAN processing finished. Returning original data only. ***\n" + "-" * 50)
-        return df # Return original DataFrame if aggregation failed
+            print(f"✅ SMS MASIVIAN processing finished. Returning original and aggregated data.")
+            return [df, sms_masivian_aggregated_df] # Return a list of DataFrames
+        else:
+            print("⚠️ No valid data remaining after filtering for aggregation.")
+            print(f"✅ SMS MASIVIAN processing finished. Returning original data only.")
+            return df # Return original DataFrame if aggregation failed
+    except Exception as e:
+        print(f"❌ Error processing SMS MASIVIAN file '{file_path}': {e}")
+        return None
 
 def process_wisebot(file_path, present_headers, wisebot_subtype):
     """
@@ -537,84 +558,90 @@ def process_wisebot(file_path, present_headers, wisebot_subtype):
     Filters out 'CONTESTADORA' from ESTADO_LLAMADA, sums TIEMPO_LLAMADA,
     and groups by FECHA_LLAMADA (day) and CAMPAÑA.
     """
-    print(f"*** Starting WISEBOT processing ({wisebot_subtype}): '{file_path}' ***")
-    df = _read_and_normalize_excel_data(file_path)
-    print(f"  Initial consolidated rows: {len(df)}")
-    print("  Normalized columns:", df.columns.tolist())
+    print(f"🚀 Starting WISEBOT processing ({wisebot_subtype}): '{file_path}'")
+    try:
+        df = _read_and_normalize_excel_data(file_path)
+        print(f"📊 Initial consolidated rows: {len(df)}")
+        print("📋 Normalized columns:", df.columns.tolist())
 
-    # --- WISEBOT SPECIFIC LOGIC ---
+        # --- WISEBOT SPECIFIC LOGIC ---
 
-    # 1. Filter out rows where 'estado_llamada' is 'contestadora'
-    df_filtered = df.copy() # Start with a copy to avoid modifying original df
-    if 'estado_llamada' in df_filtered.columns and 'marca' not in df_filtered.columns:
-        initial_rows = len(df_filtered)
-        # Ensure comparison is case-insensitive for 'contestadora'
-        df_filtered = df_filtered[df_filtered['estado_llamada'].astype(str).str.lower() != 'contestadora']
-        print(f"  Filtered out 'CONTESTADORA' from 'estado_llamada'. Rows remaining: {len(df_filtered)} (Removed: {initial_rows - len(df_filtered)})")
-    else:
-        print("  Warning: 'estado_llamada' column not found for filtering.")
+        # 1. Filter out rows where 'estado_llamada' is 'contestadora'
+        df_filtered = df.copy() # Start with a copy to avoid modifying original df
+        if 'estado_llamada' in df_filtered.columns and 'marca' not in df_filtered.columns:
+            initial_rows = len(df_filtered)
+            # Ensure comparison is case-insensitive for 'contestadora'
+            df_filtered = df_filtered[df_filtered['estado_llamada'].astype(str).str.lower() != 'contestadora']
+            print(f"✅ Filtered out 'CONTESTADORA' from 'estado_llamada'. Rows remaining: {len(df_filtered)} (Removed: {initial_rows - len(df_filtered)})")
+        else:
+            print("⚠️ Warning: 'estado_llamada' column not found for filtering.")
 
-    # 2. Convert 'tiempo_llamada' to numeric, handling errors
-    if 'tiempo_llamada' in df_filtered.columns:
-        df_filtered['tiempo_llamada'] = pd.to_numeric(df_filtered['tiempo_llamada'], errors='coerce').fillna(0)
-        print("  'tiempo_llamada' converted to numeric.")
-    else:
-        print("  Warning: 'tiempo_llamada' column not found for summation. Adding as 0.")
-        df_filtered['tiempo_llamada'] = 0 # Add column with zeros if missing
+        # 2. Convert 'tiempo_llamada' to numeric, handling errors
+        if 'tiempo_llamada' in df_filtered.columns:
+            df_filtered['tiempo_llamada'] = pd.to_numeric(df_filtered['tiempo_llamada'], errors='coerce').fillna(0)
+            print("✅ 'tiempo_llamada' converted to numeric.")
+        else:
+            print("⚠️ Warning: 'tiempo_llamada' column not found for summation. Adding as 0.")
+            df_filtered['tiempo_llamada'] = 0 # Add column with zeros if missing
 
-    # 3. Convert 'fecha_llamada' to datetime and extract date part for grouping
-    if 'fecha_estado_final' in df_filtered.columns:
-        df_filtered['fecha_estado_final'] = pd.to_datetime(df_filtered['fecha_estado_final'], errors='coerce')
-        df_filtered['fecha_dia'] = df_filtered['fecha_estado_final'].dt.floor('H') # Extract date part (YYYY-MM-DD)
-        print("  'fecha_estado_final' converted to date for grouping.")
-    else:
-        print("  Error: 'fecha_estado_final' column not found for grouping. Cannot perform aggregation.")
-        print(f"*** WISEBOT processing finished with errors. ***\n" + "-" * 50)
-        return None # Return None if key column for grouping is missing
+        # 3. Convert 'fecha_llamada' to datetime and extract date part for grouping
+        if 'fecha_estado_final' in df_filtered.columns:
+            df_filtered['fecha_estado_final'] = pd.to_datetime(df_filtered['fecha_estado_final'], errors='coerce')
+            df_filtered['fecha_dia'] = df_filtered['fecha_estado_final'].dt.floor('h') # Extract date part (YYYY-MM-DD)
+            print("✅ 'fecha_llamada' converted to date for grouping.")
+        elif 'fecha_llamada' in df_filtered.columns:
+            df_filtered['fecha_llamada'] = pd.to_datetime(df_filtered['fecha_llamada'], errors='coerce')
+            df_filtered['fecha_dia'] = df_filtered['fecha_llamada'].dt.floor('h') # Extract date part (YYYY-MM-DD)
+            print("✅ 'fecha_llamada' converted to date for grouping.")
+        else:
+            print("❌ Error: 'fecha_estado_final' or 'fecha_llamada' column not found for grouping. Cannot perform aggregation.")
+            return None # Return None if key column for grouping is missing
 
-    # Ensure 'campaña' column exists for grouping
-    if 'campaña' not in df_filtered.columns and 'marca' in df_filtered.columns:
-        print("  Error: 'campaña' column not found for grouping. Cannot perform aggregation.")
-        print(f"*** WISEBOT processing finished with errors. ***\n" + "-" * 50)
-        return None # Return None if key column for grouping is missing
+        # Ensure 'campaña' column exists for grouping
+        if 'campaña' not in df_filtered.columns and 'marca' in df_filtered.columns:
+            print("❌ Error: 'campaña' column not found for grouping. Cannot perform aggregation.")
+            return None # Return None if key column for grouping is missing
 
-    # 4. Group by 'fecha_dia' and 'campaña' and sum 'tiempo_llamada'
-    # Filter out rows where fecha_dia is NaT (Not a Time) due to parsing errors
-    df_filtered = df_filtered.dropna(subset=['fecha_dia'])
-    if not df_filtered.empty and 'marca' not in df_filtered.columns:
-        wisebot_grouped_df = df_filtered.groupby(['fecha_dia', 'campaña'])['tiempo_llamada'].sum().reset_index()
-        wisebot_grouped_df['contador_registros'] = wisebot_grouped_df['tiempo_llamada'].copy()
-        # Add a source_file_type to the aggregated Wisebot data too
-        wisebot_grouped_df['source_file_type'] = f'{wisebot_subtype.upper()}'
-        print("\n  Aggregated Wisebot Data:")
-        print(wisebot_grouped_df.to_string()) # Use .to_string() for full display
-    elif not df_filtered.empty and 'marca' in df_filtered.columns:
-        wisebot_grouped_df = df_filtered.groupby(['fecha_dia', 'marca'])['tiempo_llamada'].sum().reset_index()
-        wisebot_grouped_df['contador_registros'] = wisebot_grouped_df['tiempo_llamada'].copy()
-        # Add a source_file_type to the aggregated Wisebot data too
-        wisebot_grouped_df['source_file_type'] = f'{wisebot_subtype.upper()}'
-        print("\n  Aggregated Wisebot Data:")
-        print(wisebot_grouped_df.to_string()) # Use .to_string() for full display
-    else:
-        wisebot_grouped_df = pd.DataFrame(columns=['fecha_dia', 'campaña', 'contador_registros', 'tiempo_llamada', 'source_file_type'])
-        print("  No valid data remaining after filtering and date parsing for aggregation.")
+        # 4. Group by 'fecha_dia' and 'campaña' and sum 'tiempo_llamada'
+        # Filter out rows where fecha_dia is NaT (Not a Time) due to parsing errors
+        df_filtered = df_filtered.dropna(subset=['fecha_dia'])
+        if not df_filtered.empty and 'marca' not in df_filtered.columns:
+            wisebot_grouped_df = df_filtered.groupby(['fecha_dia', 'campaña'])['tiempo_llamada'].sum().reset_index()
+            wisebot_grouped_df['contador_registros'] = wisebot_grouped_df['tiempo_llamada'].copy()
+            # Add a source_file_type to the aggregated Wisebot data too
+            wisebot_grouped_df['source_file_type'] = f'{wisebot_subtype.upper()}'
+            print("\n📈 Aggregated Wisebot Data:")
+            print(wisebot_grouped_df.to_string()) # Use .to_string() for full display
+        elif not df_filtered.empty and 'marca' in df_filtered.columns:
+            wisebot_grouped_df = df_filtered.groupby(['fecha_dia', 'marca'])['tiempo_llamada'].sum().reset_index()
+            wisebot_grouped_df['contador_registros'] = wisebot_grouped_df['tiempo_llamada'].copy()
+            # Add a source_file_type to the aggregated Wisebot data too
+            wisebot_grouped_df['source_file_type'] = f'{wisebot_subtype.upper()}'
+            print("\n📈 Aggregated Wisebot Data:")
+            print(wisebot_grouped_df.to_string()) # Use .to_string() for full display
+        else:
+            wisebot_grouped_df = pd.DataFrame(columns=['fecha_dia', 'campaña', 'contador_registros', 'tiempo_llamada', 'source_file_type'])
+            print("⚠️ No valid data remaining after filtering and date parsing for aggregation.")
 
-    # --- Sub-classification specific details (for logging/debugging) ---
-    if wisebot_subtype == "wisebot_benefits":
-        print("  Wisebot Subtype: With benefits (nombre, apellido, desea_beneficios).")
-    elif wisebot_subtype == "wisebot_agreement":
-        print("  Wisebot Subtype: With agreement and deadline (id base, fecha_acuerdo, fecha_plazo).")
-    elif wisebot_subtype == "wisebot_titular":
-        print("  Wisebot Subtype: With titular information (marca).")
-    elif wisebot_subtype == "wisebot_base":
-        print("  Wisebot Subtype: Base (only basic columns).")
-    else:
-        print("  Wisebot Subtype: Unknown (this should not happen if classification is correct).")
+        # --- Sub-classification specific details (for logging/debugging) ---
+        if wisebot_subtype == "wisebot_benefits":
+            print("📝 Wisebot Subtype: With benefits (nombre, apellido, desea_beneficios).")
+        elif wisebot_subtype == "wisebot_agreement":
+            print("📝 Wisebot Subtype: With agreement and deadline (id base, fecha_acuerdo, fecha_plazo).")
+        elif wisebot_subtype == "wisebot_titular":
+            print("📝 Wisebot Subtype: With titular information (marca).")
+        elif wisebot_subtype == "wisebot_base":
+            print("📝 Wisebot Subtype: Base (only basic columns).")
+        else:
+            print("❓ Wisebot Subtype: Unknown (this should not happen if classification is correct).")
 
-    wisebot_grouped_df['source_file_type'] = wisebot_grouped_df['source_file_type'].str.replace('_', ' ')
-    
-    print(f"*** WISEBOT processing finished. ***\n" + "-" * 50)
-    return wisebot_grouped_df
+        wisebot_grouped_df['source_file_type'] = wisebot_grouped_df['source_file_type'].str.replace('_', ' ')
+        
+        print(f"✅ WISEBOT processing finished.")
+        return wisebot_grouped_df
+    except Exception as e:
+        print(f"❌ Error processing WISEBOT file '{file_path}': {e}")
+        return None
 
 # --- Modified Save Function to unify columns, filter aggregated, and unify grouping concepts ---
 def data_to_single_dataframe(list_of_dataframes):
@@ -631,9 +658,11 @@ def data_to_single_dataframe(list_of_dataframes):
         output_filename (str): The name of the output Excel file.
     """
     if not list_of_dataframes:
-        print("No DataFrames to combine. Skipping output file creation.")
-        return
+        print("⚠️ No DataFrames to combine. Skipping output file creation.")
+        return None
 
+    print("🔄 Starting to combine DataFrames...")
+    
     # Define the list of desired aggregated source file types
     desired_aggregated_types = [
         'EMAIL MASIVIAN',
@@ -699,38 +728,38 @@ def data_to_single_dataframe(list_of_dataframes):
                     marca_renamed = False
                     for old_name, new_name in grouping_columns_map.items():
                         if old_name == "marca" and old_name in df_to_add.columns:
-                            print("marca renamed")
+                            print("✅ 'marca' column renamed to 'marca_agrupada_campana'")
                             df_to_add.rename(columns={old_name: new_name}, inplace=True)
                             marca_renamed = True
                         elif old_name == "campaña" and old_name in df_to_add.columns and marca_renamed:
-                            print("campaña not renamed")
+                            print("⚠️ 'campaña' column not renamed (already have 'marca_agrupada_campana')")
                             continue
                         elif old_name in df_to_add.columns:
-                            print(f"Renaming {old_name} to {new_name}")
+                            print(f"✅ Renaming {old_name} to {new_name}")
                             df_to_add.rename(columns={old_name: new_name}, inplace=True)
                         else:
-                            print("nothing")
+                            print(f"ℹ️ Column {old_name} not found in DataFrame")
                     
                     processed_and_renamed_dfs.append(df_to_add)
-
+        
     if not processed_and_renamed_dfs:
-        print("No valid or desired aggregated DataFrames found after filtering and renaming. Skipping output file creation.")
-        return
+        print("⚠️ No valid or desired aggregated DataFrames found after filtering and renaming. Skipping output file creation.")
+        return None
 
     # Concatenate all valid and filtered DataFrames into one
     try:
         combined_df = pd.concat(processed_and_renamed_dfs, ignore_index=True, join='outer')
-        print(f"\nSuccessfully combined {len(processed_and_renamed_dfs)} filtered and unified DataFrames into a single DataFrame.")
-        print(f"Initial total rows in combined DataFrame: {len(combined_df)}")
-        print(f"Initial total columns in combined DataFrame: {len(combined_df.columns)}")
-        print("Combined DataFrame columns before final grouping unification:", combined_df.columns.tolist())
+        print(f"✅ Successfully combined {len(processed_and_renamed_dfs)} filtered and unified DataFrames into a single DataFrame.")
+        print(f"📊 Initial total rows in combined DataFrame: {len(combined_df)}")
+        print(f"📊 Initial total columns in combined DataFrame: {len(combined_df.columns)}")
+        print("📋 Combined DataFrame columns before final grouping unification:", combined_df.columns.tolist())
     except Exception as e:
-        print(f"Error concatenating filtered DataFrames: {e}")
-        return
+        print(f"❌ Error concatenating filtered DataFrames: {e}")
+        return None
 
     # --- New: Unify concepts in 'marca_agrupada_campana' ---
     if 'marca_agrupada_campana' in combined_df.columns:
-        print("\nApplying final concept unification to 'marca_agrupada_campana'...")
+        print("\n🔄 Applying final concept unification to 'marca_agrupada_campana'...")
 
         # Create a lowercase version for comparison
         combined_df['agrupador_lower'] = combined_df['marca_agrupada_campana'].astype(str).str.lower()
@@ -772,11 +801,11 @@ def data_to_single_dataframe(list_of_dataframes):
 
         # Drop the temporary lowercase column
         combined_df.drop(columns=['agrupador_lower'], inplace=True)
-        print("Final concept unification applied.")
+        print("✅ Final concept unification applied.")
     else:
-        print("Warning: 'marca_agrupada_campana' column not found for final concept unification.")
+        print("⚠️ Warning: 'marca_agrupada_campana' column not found for final concept unification.")
 
-    print("Contador registros summary after final unification:", len(combined_df))
+    print(f"📊 Contador registros summary after final unification: {len(combined_df)}")
     return combined_df
     
 # --- Step 5: Main Orchestration Function (Corrected) ---
@@ -790,83 +819,100 @@ def process_excel_files_in_folder(input_folder):
         input_folder (str): The path to the folder containing Excel files to process.
         output_folder (str): The path to the folder where processed data will be saved.
     """
-    print(f"--- Starting processing of files in '{input_folder}' ---")
+    print(f"🚀 Starting processing of files in '{input_folder}'")
     if not os.path.exists(input_folder):
-        print(f"Error: Input folder '{input_folder}' does not exist.")
-        return
+        print(f"❌ Error: Input folder '{input_folder}' does not exist.")
+        return None
 
     list_of_all_processed_dataframes = [] # List to store all processed DataFrames
 
     for filename in os.listdir(input_folder):
         if filename.endswith((".xlsx", ".xls", ".csv")): # Check for Excel files
             file_path = os.path.join(input_folder, filename)
-            print(f"\n--- Attempting to process: {filename} ---")
+            print(f"\n📂 Attempting to process: {filename}")
 
             file_type, present_headers = classify_excel_file(file_path)
             processed_data = None # Initialize processed_data for each file
-            if file_type == "sms_saem":
-                processed_data = process_sms_saem(file_path, present_headers)
-            elif file_type == "ivr_saem":
-                processed_data = process_ivr_saem(file_path, present_headers)
-            elif file_type == "ivr_ipcom":
-                processed_data = process_ivr_ipcom(file_path, present_headers)
-            elif file_type == "email_masivian":
-                processed_data = process_email_masivian(file_path, present_headers)
-            elif file_type == "sms_masivian":
-                processed_data = process_sms_masivian(file_path, present_headers)
-            elif file_type.startswith("wisebot"):
-                processed_data = process_wisebot(file_path, present_headers, file_type)
-            elif file_type == "unknown":
-                print(f"ATTENTION: Unknown file type for '{filename}'. No specific processing applied.")
-                print(f"  Columns found: {present_headers}")
-                continue # Skip to next file
-            elif file_type.startswith("error"):
-                print(f"Could not process '{filename}' due to an error during classification.")
-                continue # Skip to next file
-            else:
-                print(f"Internal error: Unexpected classification '{file_type}' for '{filename}'.")
-                continue # Skip to next file
-
-            # Handle the processed_data: if it's a list, extend the main list; otherwise, append it.
-            if processed_data is not None:
-                if isinstance(processed_data, list):
-                    # If it's a list of DataFrames, extend the main list
-                    for df_item in processed_data:
-                        if df_item is not None and not df_item.empty:
-                            list_of_all_processed_dataframes.append(df_item)
-                            print(f"  Successfully collected a DataFrame from '{filename}' for combined output.")
-                        elif df_item is not None and df_item.empty:
-                            print(f"  A DataFrame processed from '{filename}' resulted in an empty DataFrame. Not added to combined output.")
-                        else:
-                            print(f"  A DataFrame processed from '{filename}' was None. Not added to combined output.")
-                    print(f"  All DataFrames from '{filename}' handled.")
-                elif not processed_data.empty:
-                    # If it's a single DataFrame, append it
-                    list_of_all_processed_dataframes.append(processed_data)
-                    print(f"  Successfully processed '{filename}'. Data collected for combined output in registers.")
+            
+            try:
+                if file_type == "sms_saem":
+                    processed_data = process_sms_saem(file_path, present_headers)
+                elif file_type == "ivr_saem":
+                    processed_data = process_ivr_saem(file_path, present_headers)
+                elif file_type == "ivr_ipcom":
+                    processed_data = process_ivr_ipcom(file_path, present_headers)
+                elif file_type == "email_masivian":
+                    processed_data = process_email_masivian(file_path, present_headers)
+                elif file_type == "sms_masivian":
+                    processed_data = process_sms_masivian(file_path, present_headers)
+                elif file_type.startswith("wisebot") or filename.startswith("Inf_recupera"):
+                    processed_data = process_wisebot(file_path, present_headers, file_type)
+                elif file_type == "unknown":
+                    print(f"❓ ATTENTION: Unknown file type for '{filename}'. No specific processing applied.")
+                    print(f"📋 Columns found: {present_headers}")
+                    continue # Skip to next file
+                elif file_type.startswith("error"):
+                    print(f"❌ Could not process '{filename}' due to an error during classification.")
+                    continue # Skip to next file
                 else:
-                    print(f"  Processed '{filename}' resulted in an empty DataFrame. Not added to combined output.")
-            else:
-                 print(f"  Processing of '{filename}' failed or returned None. Not added to combined output.")
+                    print(f"❌ Internal error: Unexpected classification '{file_type}' for '{filename}'.")
+                    continue # Skip to next file
 
-    print(f"--- Finished processing files in '{input_folder}' ---")
+                # Handle the processed_data: if it's a list, extend the main list; otherwise, append it.
+                if processed_data is not None:
+                    if isinstance(processed_data, list):
+                        # If it's a list of DataFrames, extend the main list
+                        for df_item in processed_data:
+                            if df_item is not None and not df_item.empty:
+                                list_of_all_processed_dataframes.append(df_item)
+                                print(f"✅ Successfully collected a DataFrame from '{filename}' for combined output.")
+                            elif df_item is not None and df_item.empty:
+                                print(f"⚠️ A DataFrame processed from '{filename}' resulted in an empty DataFrame. Not added to combined output.")
+                            else:
+                                print(f"⚠️ A DataFrame processed from '{filename}' was None. Not added to combined output.")
+                        print(f"✅ All DataFrames from '{filename}' handled.")
+                    elif not processed_data.empty:
+                        # If it's a single DataFrame, append it
+                        list_of_all_processed_dataframes.append(processed_data)
+                        print(f"✅ Successfully processed '{filename}'. Data collected for combined output in registers.")
+                    else:
+                        print(f"⚠️ Processed '{filename}' resulted in an empty DataFrame. Not added to combined output.")
+                else:
+                    print(f"❌ Processing of '{filename}' failed or returned None. Not added to combined output.")
+                    
+            except Exception as e:
+                print(f"❌ Unexpected error processing file '{filename}': {e}")
+                continue
+        
+        print(f"\n✔️ Counter of processed files: {len(list_of_all_processed_dataframes)}")
+        
+    print(f"\n✅ Finished processing files in '{input_folder}'")
 
     # Save all collected DataFrames to a single Excel sheet
     combined_df = data_to_single_dataframe(list_of_all_processed_dataframes)
-    combined_df = (combined_df
-        .assign(
-            fecha_movimiento=combined_df['fecha_movimiento'].str.split(' ').str[0],
-            hora_movimiento=combined_df['fecha_movimiento'].str.split(' ').str[1].str[:5],
-            marca_campana_backup=combined_df['marca_agrupada_campana']
-        )
-        .reindex(columns=[
-            'fecha_movimiento',
-            'hora_movimiento',
-            'marca_agrupada_campana', 
-            'source_file_type',
-            'registros_movimiento',
-            'marca_campana_backup'
-        ])
-    )
     
-    return combined_df
+    if combined_df is not None and not combined_df.empty:
+        try:
+            combined_df = (combined_df
+                .assign(
+                    fecha_movimiento=combined_df['fecha_movimiento'].str.split(' ').str[0],
+                    hora_movimiento=combined_df['fecha_movimiento'].str.split(' ').str[1].str[:5],
+                    marca_campana_backup=combined_df['marca_agrupada_campana']
+                )
+                .reindex(columns=[
+                    'fecha_movimiento',
+                    'hora_movimiento',
+                    'marca_agrupada_campana', 
+                    'source_file_type',
+                    'registros_movimiento',
+                    'marca_campana_backup'
+                ])
+            )
+            print(f"✔️ Final DataFrame processing completed successfully! {len(combined_df)} rows ready.")
+            return combined_df
+        except Exception as e:
+            print(f"❌ Error during final DataFrame processing: {e}")
+            return None
+    else:
+        print("⚠️ No valid data to process. Returning None.")
+        return None
