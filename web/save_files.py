@@ -233,3 +233,101 @@ def save_to_parquet(data_frame, output_path: str, filename: str, partitions: Uni
 
         except Exception as spark_err:
             print(f"❌ ERROR: Failed to save with both PySpark and Polars. Reason: {spark_err}")
+
+def save_to_json(data_frame, output_path: str, filename: str, partitions: Union[int, str]):
+    """
+    Saves a DataFrame (Polars or PySpark) to a single JSON file.
+    Tries PySpark first for performance, falls back to Polars if conversion fails.
+    """
+    partitions = int(partitions)
+    if output_path and not os.path.exists(output_path):
+        os.makedirs(output_path)
+    
+    now = datetime.now()
+    time_file = now.strftime("%Y%m%d_%H%M")
+    file_date = now.strftime("%Y%m%d")
+    
+    # Create a temporary folder to store initial files
+    temp_folder_name = f"{filename}_{time_file}"
+    temp_output_path = os.path.join(output_path, temp_folder_name)
+
+    # Save the DataFrame into the temporary folder using PySpark
+    try:
+        (data_frame
+            .repartition(partitions) 
+            .write
+            .mode("overwrite")
+            .json(temp_output_path)
+        )
+
+        # Remove unnecessary files
+        for root, dirs, files in os.walk(temp_output_path):
+            for file in files:
+                if file.startswith("._") or file == "_SUCCESS" or file.endswith(".crc"):
+                    os.remove(os.path.join(root, file))
+
+        # Move the JSON files from the temporary folder to the main output path
+        json_files = [f for f in os.listdir(temp_output_path) if f.endswith(".json")]
+        if len(json_files) == 1:
+            # If only one file, rename it directly
+            old_file_path = os.path.join(temp_output_path, json_files[0])
+            new_file_path = os.path.join(output_path, f"{filename} {file_date}.json")
+            os.rename(old_file_path, new_file_path)
+        else:
+            # If multiple files, combine them into one
+            combined_data = []
+            for i, file in enumerate(json_files, start=1):
+                old_file_path = os.path.join(temp_output_path, file)
+                with open(old_file_path, 'r', encoding='utf-8') as f:
+                    for line in f:
+                        if line.strip():
+                            combined_data.append(line.strip())
+            
+            # Write combined data to single JSON file
+            new_file_path = os.path.join(output_path, f"{filename} {file_date}.json")
+            with open(new_file_path, 'w', encoding='utf-8') as f:
+                f.write('\n'.join(combined_data))
+
+        # Delete the temporary folder
+        if os.path.exists(temp_output_path):
+            shutil.rmtree(temp_output_path)
+            print(f"🗑️ Temporary folder deleted: {temp_output_path}")
+
+        print(f"✔️ JSON file successfully saved to: {new_file_path}")
+
+    except Exception as e:
+        print(f"⚠️ PySpark JSON save failed ({e}), trying Polars fallback...")
+        try:
+            # Save using Polars
+            print("💾 Attempting to save with Polars...")
+            if not isinstance(data_frame, pl.DataFrame):
+                # Convert from PySpark or Pandas
+                if hasattr(data_frame, "toPandas"):  # PySpark
+                    data_frame = pl.from_pandas(data_frame.toPandas())
+                elif isinstance(data_frame, pd.DataFrame):
+                    data_frame = pl.from_pandas(data_frame)
+
+            # Save as JSON with Polars
+            json_file_path = os.path.join(output_path, f"{filename} {file_date}.json")
+            data_frame.write_ndjson(json_file_path)
+            print(f"✅ JSON file successfully saved to: {json_file_path}")
+
+        except Exception as polars_err:
+            print(f"❌ ERROR: Failed to save with both PySpark and Polars. Reason: {polars_err}")
+            
+            # Ultimate fallback: use pandas
+            try:
+                print("💾 Attempting to save with Pandas as last resort...")
+                if hasattr(data_frame, "toPandas"):  # PySpark
+                    pandas_df = data_frame.toPandas()
+                elif isinstance(data_frame, pl.DataFrame):
+                    pandas_df = data_frame.to_pandas()
+                else:
+                    pandas_df = data_frame
+                
+                json_file_path = os.path.join(output_path, f"{filename} {file_date}.json")
+                pandas_df.to_json(json_file_path, orient='records', lines=True, indent=2)
+                print(f"✅ JSON file successfully saved with Pandas to: {json_file_path}")
+                
+            except Exception as pandas_err:
+                print(f"❌ ERROR: All save methods failed. Reason: {pandas_err}")
