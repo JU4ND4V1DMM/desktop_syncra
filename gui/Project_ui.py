@@ -1825,7 +1825,7 @@ class Ui_Process_Data(object):
         self.scrollArea_2.setWidgetResizable(True)
         self.scrollArea_2.setObjectName("scrollArea_2")
         self.scrollAreaWidgetContents_2 = QtWidgets.QWidget()
-        self.scrollAreaWidgetContents_2.setGeometry(QtCore.QRect(0, -223, 222, 342))
+        self.scrollAreaWidgetContents_2.setGeometry(QtCore.QRect(0, 0, 206, 342))
         self.scrollAreaWidgetContents_2.setObjectName("scrollAreaWidgetContents_2")
         self.gridLayout_2 = QtWidgets.QGridLayout(self.scrollAreaWidgetContents_2)
         self.gridLayout_2.setObjectName("gridLayout_2")
@@ -3060,6 +3060,309 @@ class Ui_Process_Data(object):
         self.label_Dates_FLP_2.raise_()
         self.Group_Selection_Starter_4.raise_()
         self.tabWidget.addTab(self.Resources, "")
+        self.tab_5 = QtWidgets.QWidget()
+        self.tab_5.setObjectName("tab_5")
+        self.Group_Selection_Starter_32 = QtWidgets.QGroupBox(parent=self.tab_5)
+        self.Group_Selection_Starter_32.setGeometry(QtCore.QRect(670, 10, 281, 211))
+        self.Group_Selection_Starter_32.setStyleSheet("font: 63 10pt \"Bahnschrift SemiBold\";")
+        self.Group_Selection_Starter_32.setObjectName("Group_Selection_Starter_32")
+        self.scrollArea_7 = QtWidgets.QScrollArea(parent=self.Group_Selection_Starter_32)
+        self.scrollArea_7.setGeometry(QtCore.QRect(20, 30, 241, 161))
+        self.scrollArea_7.setLayoutDirection(QtCore.Qt.LayoutDirection.LeftToRight)
+        self.scrollArea_7.setAutoFillBackground(True)
+        self.scrollArea_7.setLineWidth(3)
+        self.scrollArea_7.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
+        self.scrollArea_7.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self.scrollArea_7.setSizeAdjustPolicy(QtWidgets.QAbstractScrollArea.SizeAdjustPolicy.AdjustIgnored)
+        self.scrollArea_7.setWidgetResizable(True)
+        self.scrollArea_7.setObjectName("scrollArea_7")
+        self.scrollAreaWidgetContents_7 = QtWidgets.QWidget()
+        self.scrollAreaWidgetContents_7.setGeometry(QtCore.QRect(0, 0, 222, 192))
+        self.scrollAreaWidgetContents_7.setObjectName("scrollAreaWidgetContents_7")
+        self.gridLayout_7 = QtWidgets.QGridLayout(self.scrollAreaWidgetContents_7)
+        self.gridLayout_7.setObjectName("gridLayout_7")
+        self.pushButton_62 = QtWidgets.QPushButton(parent=self.scrollAreaWidgetContents_7)
+        font = QtGui.QFont()
+        font.setFamily("Bahnschrift SemiBold")
+        font.setPointSize(10)
+        font.setBold(False)
+        font.setItalic(False)
+        font.setWeight(7)
+        self.pushButton_62.setFont(font)
+        self.pushButton_62.setStyleSheet("/* Al pasar el mouse */\n"
+"QPushButton:hover {\n"
+"    border: 2px solid rgb(217, 16, 76); /* Borde gris claro */\n"
+"    border-radius: 8px;\n"
+"}\n"
+"QPushButton:pressed\n"
+"{\n"
+"    color: rgb(255, 255, 255);\n"
+"    background-color: rgb(217, 16, 76);\n"
+"}")
+        self.pushButton_62.setObjectName("pushButton_62")
+        self.gridLayout_7.addWidget(self.pushButton_62, 1, 0, 1, 1)
+        self.pushButton_64 = QtWidgets.QPushButton(parent=self.scrollAreaWidgetContents_7)
+        font = QtGui.QFont()
+        font.setFamily("Bahnschrift SemiBold")
+        font.setPointSize(10)
+        font.setBold(False)
+        font.setItalic(False)
+        font.setWeight(7)
+        self.pushButton_64.setFont(font)
+        self.pushButton_64.setStyleSheet("/* Al pasar el mouse */\n"
+"QPushButton:hover {\n"
+"    border: 2px solid rgb(217, 16, 76); /* Borde gris claro */\n"
+"    border-radius: 8px;\n"
+"}\n"
+"QPushButton:pressed\n"
+"{\n"
+"    color: rgb(255, 255, 255);\n"
+"    background-color: rgb(217, 16, 76);\n"
+"}")
+        self.pushButton_64.setObjectName("pushButton_64")
+        self.gridLayout_7.addWidget(self.pushButton_64, 3, 0, 1, 1)
+        self.pushButton_63 = QtWidgets.QPushButton(parent=self.scrollAreaWidgetContents_7)
+        font = QtGui.QFont()
+        font.setFamily("Bahnschrift SemiBold")
+        font.setPointSize(10)
+        font.setBold(False)
+        font.setItalic(False)
+        font.setWeight(7)
+        self.pushButton_63.setFont(font)
+        self.pushButton_63.setStyleSheet("/* Al pasar el mouse */\n"
+"QPushButton:hover {\n"
+"    border: 2px solid rgb(217, 16, 76); /* Borde gris claro */\n"
+"    border-radius: 8px;\n"
+"}\n"
+"QPushButton:pressed\n"
+"{\n"
+"    color: rgb(255, 255, 255);\n"
+"    background-color: rgb(217, 16, 76);\n"
+"}")
+        self.pushButton_63.setObjectName("pushButton_63")
+        self.gridLayout_7.addWidget(self.pushButton_63, 2, 0, 1, 1)
+        self.pushButton_65 = QtWidgets.QPushButton(parent=self.scrollAreaWidgetContents_7)
+        font = QtGui.QFont()
+        font.setFamily("Bahnschrift SemiBold")
+        font.setPointSize(10)
+        font.setBold(False)
+        font.setItalic(False)
+        font.setWeight(7)
+        self.pushButton_65.setFont(font)
+        self.pushButton_65.setStyleSheet("/* Al pasar el mouse */\n"
+"QPushButton:hover {\n"
+"    border: 2px solid rgb(217, 16, 76); /* Borde gris claro */\n"
+"    border-radius: 8px;\n"
+"}\n"
+"QPushButton:pressed\n"
+"{\n"
+"    color: rgb(255, 255, 255);\n"
+"    background-color: rgb(217, 16, 76);\n"
+"}")
+        self.pushButton_65.setObjectName("pushButton_65")
+        self.gridLayout_7.addWidget(self.pushButton_65, 4, 0, 1, 1)
+        self.pushButton_69 = QtWidgets.QPushButton(parent=self.scrollAreaWidgetContents_7)
+        font = QtGui.QFont()
+        font.setFamily("Bahnschrift SemiBold")
+        font.setPointSize(10)
+        font.setBold(False)
+        font.setItalic(False)
+        font.setWeight(7)
+        self.pushButton_69.setFont(font)
+        self.pushButton_69.setStyleSheet("/* Al pasar el mouse */\n"
+"QPushButton:hover {\n"
+"    border: 2px solid rgb(217, 16, 76); /* Borde gris claro */\n"
+"    border-radius: 8px;\n"
+"}\n"
+"QPushButton:pressed\n"
+"{\n"
+"    color: rgb(255, 255, 255);\n"
+"    background-color: rgb(217, 16, 76);\n"
+"}")
+        self.pushButton_69.setObjectName("pushButton_69")
+        self.gridLayout_7.addWidget(self.pushButton_69, 6, 0, 1, 1)
+        self.pushButton_70 = QtWidgets.QPushButton(parent=self.scrollAreaWidgetContents_7)
+        font = QtGui.QFont()
+        font.setFamily("Bahnschrift SemiBold")
+        font.setPointSize(10)
+        font.setBold(False)
+        font.setItalic(False)
+        font.setWeight(7)
+        self.pushButton_70.setFont(font)
+        self.pushButton_70.setStyleSheet("/* Al pasar el mouse */\n"
+"QPushButton:hover {\n"
+"    border: 2px solid rgb(217, 16, 76); /* Borde gris claro */\n"
+"    border-radius: 8px;\n"
+"}\n"
+"QPushButton:pressed\n"
+"{\n"
+"    color: rgb(255, 255, 255);\n"
+"    background-color: rgb(217, 16, 76);\n"
+"}")
+        self.pushButton_70.setObjectName("pushButton_70")
+        self.gridLayout_7.addWidget(self.pushButton_70, 5, 0, 1, 1)
+        self.scrollArea_7.setWidget(self.scrollAreaWidgetContents_7)
+        self.Group_Selection_Starter_33 = QtWidgets.QGroupBox(parent=self.tab_5)
+        self.Group_Selection_Starter_33.setGeometry(QtCore.QRect(670, 240, 281, 161))
+        self.Group_Selection_Starter_33.setStyleSheet("font: 63 10pt \"Bahnschrift SemiBold\";")
+        self.Group_Selection_Starter_33.setObjectName("Group_Selection_Starter_33")
+        self.scrollArea_8 = QtWidgets.QScrollArea(parent=self.Group_Selection_Starter_33)
+        self.scrollArea_8.setGeometry(QtCore.QRect(20, 30, 241, 111))
+        self.scrollArea_8.setLayoutDirection(QtCore.Qt.LayoutDirection.LeftToRight)
+        self.scrollArea_8.setAutoFillBackground(True)
+        self.scrollArea_8.setLineWidth(3)
+        self.scrollArea_8.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
+        self.scrollArea_8.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self.scrollArea_8.setSizeAdjustPolicy(QtWidgets.QAbstractScrollArea.SizeAdjustPolicy.AdjustIgnored)
+        self.scrollArea_8.setWidgetResizable(True)
+        self.scrollArea_8.setObjectName("scrollArea_8")
+        self.scrollAreaWidgetContents_8 = QtWidgets.QWidget()
+        self.scrollAreaWidgetContents_8.setGeometry(QtCore.QRect(0, 0, 222, 109))
+        self.scrollAreaWidgetContents_8.setObjectName("scrollAreaWidgetContents_8")
+        self.gridLayout_8 = QtWidgets.QGridLayout(self.scrollAreaWidgetContents_8)
+        self.gridLayout_8.setObjectName("gridLayout_8")
+        self.pushButton_66 = QtWidgets.QPushButton(parent=self.scrollAreaWidgetContents_8)
+        font = QtGui.QFont()
+        font.setFamily("Bahnschrift SemiBold")
+        font.setPointSize(10)
+        font.setBold(False)
+        font.setItalic(False)
+        font.setWeight(7)
+        self.pushButton_66.setFont(font)
+        self.pushButton_66.setStyleSheet("/* Al pasar el mouse */\n"
+"QPushButton:hover {\n"
+"    border: 2px solid rgb(217, 16, 76); /* Borde gris claro */\n"
+"    border-radius: 8px;\n"
+"}\n"
+"QPushButton:pressed\n"
+"{\n"
+"    color: rgb(255, 255, 255);\n"
+"    background-color: rgb(217, 16, 76);\n"
+"}")
+        self.pushButton_66.setObjectName("pushButton_66")
+        self.gridLayout_8.addWidget(self.pushButton_66, 1, 0, 1, 1)
+        self.pushButton_67 = QtWidgets.QPushButton(parent=self.scrollAreaWidgetContents_8)
+        font = QtGui.QFont()
+        font.setFamily("Bahnschrift SemiBold")
+        font.setPointSize(10)
+        font.setBold(False)
+        font.setItalic(False)
+        font.setWeight(7)
+        self.pushButton_67.setFont(font)
+        self.pushButton_67.setStyleSheet("/* Al pasar el mouse */\n"
+"QPushButton:hover {\n"
+"    border: 2px solid rgb(217, 16, 76); /* Borde gris claro */\n"
+"    border-radius: 8px;\n"
+"}\n"
+"QPushButton:pressed\n"
+"{\n"
+"    color: rgb(255, 255, 255);\n"
+"    background-color: rgb(217, 16, 76);\n"
+"}")
+        self.pushButton_67.setObjectName("pushButton_67")
+        self.gridLayout_8.addWidget(self.pushButton_67, 3, 0, 1, 1)
+        self.pushButton_68 = QtWidgets.QPushButton(parent=self.scrollAreaWidgetContents_8)
+        font = QtGui.QFont()
+        font.setFamily("Bahnschrift SemiBold")
+        font.setPointSize(10)
+        font.setBold(False)
+        font.setItalic(False)
+        font.setWeight(7)
+        self.pushButton_68.setFont(font)
+        self.pushButton_68.setStyleSheet("/* Al pasar el mouse */\n"
+"QPushButton:hover {\n"
+"    border: 2px solid rgb(217, 16, 76); /* Borde gris claro */\n"
+"    border-radius: 8px;\n"
+"}\n"
+"QPushButton:pressed\n"
+"{\n"
+"    color: rgb(255, 255, 255);\n"
+"    background-color: rgb(217, 16, 76);\n"
+"}")
+        self.pushButton_68.setObjectName("pushButton_68")
+        self.gridLayout_8.addWidget(self.pushButton_68, 2, 0, 1, 1)
+        self.scrollArea_8.setWidget(self.scrollAreaWidgetContents_8)
+        self.Group_Selection_Starter_34 = QtWidgets.QGroupBox(parent=self.tab_5)
+        self.Group_Selection_Starter_34.setGeometry(QtCore.QRect(670, 420, 281, 211))
+        self.Group_Selection_Starter_34.setStyleSheet("font: 63 10pt \"Bahnschrift SemiBold\";")
+        self.Group_Selection_Starter_34.setObjectName("Group_Selection_Starter_34")
+        self.scrollArea_9 = QtWidgets.QScrollArea(parent=self.Group_Selection_Starter_34)
+        self.scrollArea_9.setGeometry(QtCore.QRect(20, 30, 241, 161))
+        self.scrollArea_9.setLayoutDirection(QtCore.Qt.LayoutDirection.LeftToRight)
+        self.scrollArea_9.setAutoFillBackground(True)
+        self.scrollArea_9.setLineWidth(3)
+        self.scrollArea_9.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
+        self.scrollArea_9.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self.scrollArea_9.setSizeAdjustPolicy(QtWidgets.QAbstractScrollArea.SizeAdjustPolicy.AdjustIgnored)
+        self.scrollArea_9.setWidgetResizable(True)
+        self.scrollArea_9.setObjectName("scrollArea_9")
+        self.scrollAreaWidgetContents_9 = QtWidgets.QWidget()
+        self.scrollAreaWidgetContents_9.setGeometry(QtCore.QRect(0, 0, 222, 159))
+        self.scrollAreaWidgetContents_9.setObjectName("scrollAreaWidgetContents_9")
+        self.gridLayout_9 = QtWidgets.QGridLayout(self.scrollAreaWidgetContents_9)
+        self.gridLayout_9.setObjectName("gridLayout_9")
+        self.pushButton_71 = QtWidgets.QPushButton(parent=self.scrollAreaWidgetContents_9)
+        font = QtGui.QFont()
+        font.setFamily("Bahnschrift SemiBold")
+        font.setPointSize(10)
+        font.setBold(False)
+        font.setItalic(False)
+        font.setWeight(7)
+        self.pushButton_71.setFont(font)
+        self.pushButton_71.setStyleSheet("/* Al pasar el mouse */\n"
+"QPushButton:hover {\n"
+"    border: 2px solid rgb(217, 16, 76); /* Borde gris claro */\n"
+"    border-radius: 8px;\n"
+"}\n"
+"QPushButton:pressed\n"
+"{\n"
+"    color: rgb(255, 255, 255);\n"
+"    background-color: rgb(217, 16, 76);\n"
+"}")
+        self.pushButton_71.setObjectName("pushButton_71")
+        self.gridLayout_9.addWidget(self.pushButton_71, 0, 0, 1, 1)
+        self.pushButton_72 = QtWidgets.QPushButton(parent=self.scrollAreaWidgetContents_9)
+        font = QtGui.QFont()
+        font.setFamily("Bahnschrift SemiBold")
+        font.setPointSize(10)
+        font.setBold(False)
+        font.setItalic(False)
+        font.setWeight(7)
+        self.pushButton_72.setFont(font)
+        self.pushButton_72.setStyleSheet("/* Al pasar el mouse */\n"
+"QPushButton:hover {\n"
+"    border: 2px solid rgb(217, 16, 76); /* Borde gris claro */\n"
+"    border-radius: 8px;\n"
+"}\n"
+"QPushButton:pressed\n"
+"{\n"
+"    color: rgb(255, 255, 255);\n"
+"    background-color: rgb(217, 16, 76);\n"
+"}")
+        self.pushButton_72.setObjectName("pushButton_72")
+        self.gridLayout_9.addWidget(self.pushButton_72, 1, 0, 1, 1)
+        self.pushButton_73 = QtWidgets.QPushButton(parent=self.scrollAreaWidgetContents_9)
+        font = QtGui.QFont()
+        font.setFamily("Bahnschrift SemiBold")
+        font.setPointSize(10)
+        font.setBold(False)
+        font.setItalic(False)
+        font.setWeight(7)
+        self.pushButton_73.setFont(font)
+        self.pushButton_73.setStyleSheet("/* Al pasar el mouse */\n"
+"QPushButton:hover {\n"
+"    border: 2px solid rgb(217, 16, 76); /* Borde gris claro */\n"
+"    border-radius: 8px;\n"
+"}\n"
+"QPushButton:pressed\n"
+"{\n"
+"    color: rgb(255, 255, 255);\n"
+"    background-color: rgb(217, 16, 76);\n"
+"}")
+        self.pushButton_73.setObjectName("pushButton_73")
+        self.gridLayout_9.addWidget(self.pushButton_73, 2, 0, 1, 1)
+        self.scrollArea_9.setWidget(self.scrollAreaWidgetContents_9)
+        self.tabWidget.addTab(self.tab_5, "")
         self.tabWidget_2.addTab(self.tab_7, "")
         Process_Data.setCentralWidget(self.CentralWidget)
         self.menuBar = QtWidgets.QMenuBar(parent=Process_Data)
@@ -3319,6 +3622,22 @@ class Ui_Process_Data(object):
         self.commandLinkButton_69.setText(_translate("Process_Data", "Exportar Pagos de Inventario"))
         self.commandLinkButton_70.setText(_translate("Process_Data", "Convertir TMO de Predictivo"))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.Resources), _translate("Process_Data", "Recursos Operativos"))
+        self.Group_Selection_Starter_32.setTitle(_translate("Process_Data", "API´s Telemática"))
+        self.pushButton_62.setText(_translate("Process_Data", "Test API Mensajería Saem"))
+        self.pushButton_64.setText(_translate("Process_Data", "Test API Mensajería Masivian"))
+        self.pushButton_63.setText(_translate("Process_Data", "Test API Marcador Saem"))
+        self.pushButton_65.setText(_translate("Process_Data", "Test API Correo Masivian"))
+        self.pushButton_69.setText(_translate("Process_Data", "Test API IPCom Interdigit"))
+        self.pushButton_70.setText(_translate("Process_Data", "Test API IPCom Vortex"))
+        self.Group_Selection_Starter_33.setTitle(_translate("Process_Data", "API´s CRM"))
+        self.pushButton_66.setText(_translate("Process_Data", "Test API Login Mes Actual"))
+        self.pushButton_67.setText(_translate("Process_Data", "Test API Chat Controlnext"))
+        self.pushButton_68.setText(_translate("Process_Data", "Test API Consulta Mora 0"))
+        self.Group_Selection_Starter_34.setTitle(_translate("Process_Data", "API´s DevOps Inhouse"))
+        self.pushButton_71.setText(_translate("Process_Data", "Test API OpenAi (GPT)"))
+        self.pushButton_72.setText(_translate("Process_Data", "Test API Gmail (Google)"))
+        self.pushButton_73.setText(_translate("Process_Data", "Test Fluochart (Microsoft)"))
+        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_5), _translate("Process_Data", "Testing DevOps"))
         self.tabWidget_2.setTabText(self.tabWidget_2.indexOf(self.tab_7), _translate("Process_Data", "Operaciones"))
         self.menu_Help.setTitle(_translate("Process_Data", "Ayuda"))
         self.menu_Creditos.setTitle(_translate("Process_Data", "Créditos"))
