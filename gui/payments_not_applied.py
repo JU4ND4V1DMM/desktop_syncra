@@ -3,117 +3,205 @@ from openpyxl import load_workbook
 from datetime import datetime
 import os
 
-def clean_and_process(df, archivo_label):
-    """Cleans the DataFrame and adds the ARCHIVO column."""
+def clean_and_process(df, file_label):
+    """🧹 Cleans the DataFrame and adds the FILE column."""
     
+    # 🔄 Rename columns for consistency
     if 'REFERENCIA_DIVIDIDA' in df.columns:
-        df = df.rename(columns={'REFERENCIA_DIVIDIDA': 'CUENTA'})
+        df = df.rename(columns={'REFERENCIA_DIVIDIDA': 'ACCOUNT'})
+        print(f"   🔄 Renamed 'REFERENCIA_DIVIDIDA' to 'ACCOUNT'")
     if 'REFERENCIA DIVIDIDA' in df.columns:
-        df = df.rename(columns={'REFERENCIA DIVIDIDA': 'CUENTA'})
+        df = df.rename(columns={'REFERENCIA DIVIDIDA': 'ACCOUNT'})
+        print(f"   🔄 Renamed 'REFERENCIA DIVIDIDA' to 'ACCOUNT'")
     if 'CUSTCODE' in df.columns:
-        df = df.rename(columns={'CUSTCODE': 'CUENTA'})
+        df = df.rename(columns={'CUSTCODE': 'ACCOUNT'})
+        print(f"   🔄 Renamed 'CUSTCODE' to 'ACCOUNT'")
         
     if 'MONTO' in df.columns:
-        df = df.rename(columns={'MONTO': 'VALOR'})
+        df = df.rename(columns={'MONTO': 'VALUE'})
+        print(f"   🔄 Renamed 'MONTO' to 'VALUE'")
     if 'PAGO' in df.columns:
-        df = df.rename(columns={'PAGO': 'VALOR'})
+        df = df.rename(columns={'PAGO': 'VALUE'})
+        print(f"   🔄 Renamed 'PAGO' to 'VALUE'")
     
-    if 'CUENTA' in df.columns:
-        df['CUENTA'] = df['CUENTA'].astype(str).str.replace('.', '', regex=False).str[-9:]
-        df = df[df['CUENTA'].str.isnumeric()]
-        df['ARCHIVO'] = archivo_label
-        df['VALOR'] = df['VALOR'].str.replace('.', ',', regex=False)
+    if 'ACCOUNT' in df.columns:
+        print(f"   🔧 Processing 'ACCOUNT' column...")
+        df['ACCOUNT'] = df['ACCOUNT'].astype(str).str.replace('.', '', regex=False).str[-9:]
+        df = df[df['ACCOUNT'].str.isnumeric()]
+        df['FILE'] = file_label
+        print(f"   📋 Added 'FILE' column with value: {file_label}")
+        
+        if 'VALUE' in df.columns:
+            df['VALUE'] = df['VALUE'].str.replace('.', ',', regex=False)
+            print(f"   💰 Formatted 'VALUE' column")
+        
+        print(f"   ✅ Cleaned data - Shape: {df.shape}")
+        return df[['ACCOUNT', 'FILE', 'VALUE']] if not df.empty else None
     else:
-        print(f"No CUENTA column found in {archivo_label} sheet.")
-    return df[['CUENTA', 'ARCHIVO', 'VALOR']] if not df.empty else None
-
-def process_file(file_path):
-    """Processes the Excel file and returns the cleaned DataFrame."""
-    df = None
-    try:
-        xls = pd.ExcelFile(file_path)
-        sheet_mapping = {
-            'CONSO_Pagos MOVIL': 'Consolidado',
-            'CONSO_Pagos_MOVIL': 'Consolidado',
-            'Pagos_Sin_Aplicar_Fijo': 'Fijo',
-            'Pagos_Sin_Aplicar Fijo': 'Fijo',
-            'pagosmovil2': 'Movil',
-            'pagos MOVIL 2': 'Movil'
-        }
-        for sheet_name, archivo_label in sheet_mapping.items():
-            if sheet_name in xls.sheet_names:
-                df = pd.read_excel(file_path, sheet_name=sheet_name, dtype=str)
-                return clean_and_process(df, archivo_label)
-        print(f"No relevant sheets found in {file_path}.")
-    except Exception as e:
-        print(f"Error processing {file_path}: {e}")
+        print(f"   ⚠️ No ACCOUNT column found in {file_label} sheet.")
     return None
 
-def Transform_Payments_without_Applied(input_folder, output_folder):
-    """Transform payments without applied status from Excel files."""
+def process_file(file_path):
+    """📊 Processes the Excel file and returns the cleaned DataFrame."""
+    df = None
+    print(f"📂 Processing file: {os.path.basename(file_path)}")
+    
     try:
+        xls = pd.ExcelFile(file_path)
+        print(f"   📑 Excel file opened - Sheets: {xls.sheet_names}")
+        
+        sheet_mapping = {
+            'CONSO_Pagos MOVIL': 'Consolidated',
+            'CONSO_Pagos_MOVIL': 'Consolidated',
+            'Pagos_Sin_Aplicar_Fijo': 'Landline',
+            'Pagos_Sin_Aplicar Fijo': 'Landline',
+            'pagosmovil2': 'Mobile',
+            'pagos MOVIL 2': 'Mobile'
+        }
+        
+        for sheet_name, file_label in sheet_mapping.items():
+            if sheet_name in xls.sheet_names:
+                print(f"   📋 Found sheet: '{sheet_name}' → Label: '{file_label}'")
+                df = pd.read_excel(file_path, sheet_name=sheet_name, dtype=str)
+                print(f"   📊 Raw data loaded - Shape: {df.shape}")
+                return clean_and_process(df, file_label)
+        
+        print(f"   ⚠️ No relevant sheets found in {os.path.basename(file_path)}")
+    except Exception as e:
+        print(f"   ❌ Error processing {os.path.basename(file_path)}: {e}")
+    
+    return None
+
+def transform_payments_without_applied(input_folder, output_folder):
+    """🔄 Transform payments without applied status from Excel files."""
+    print("=" * 70)
+    print("🚀 STARTING PAYMENTS TRANSFORMATION PROCESS")
+    print("=" * 70)
+    print(f"📁 Input folder: {input_folder}")
+    print(f"📁 Output folder: {output_folder}")
+    print("-" * 70)
+    
+    try:
+        # 📂 Get all Excel files
         excel_files = [f for f in os.listdir(input_folder) if f.endswith('.xlsx')]
+        print(f"🔍 Found {len(excel_files)} Excel file(s):")
+        for file in excel_files:
+            print(f"   • {file}")
+        
         if not excel_files:
-            raise FileNotFoundError("No Excel files found in the input folder.")
+            raise FileNotFoundError("❌ No Excel files found in the input folder.")
         
         df_list = []
+        total_records_processed = 0
+        
         for file_name in excel_files:
             file_path = os.path.join(input_folder, file_name)
-            # Print the processing message with the specified format
-            print(f"Payments not Applied Processing: {file_name} - Registers: ", end='')  # Changed line
+            
+            # 📝 Print processing message with emojis
+            print(f"\n📊 Processing: {file_name}")
+            print(f"   📈 Registers: ", end='')
             
             df = process_file(file_path)
             
-            # Get the last modification date of the file
+            # 📅 Get the last modification date of the file
             file_modification_date = datetime.fromtimestamp(os.path.getmtime(file_path)).strftime('%Y-%m-%d')
+            print(f"   📅 File date: {file_modification_date}")
 
             if df is not None:
-                df['FECHA_ARCHIVO'] = file_modification_date  # Add the modification date as a new column
+                df['FILE_DATE'] = file_modification_date  # Add the modification date as a new column
                 df_list.append(df)
-                print(len(df))  # Print the number of records processed for the current file
+                record_count = len(df)
+                total_records_processed += record_count
+                print(f"{record_count:,}")
+        
+        print(f"\n📊 TOTAL RECORDS PROCESSED: {total_records_processed:,}")
         
         if not df_list:
-            raise ValueError("No DataFrames were processed. Ensure Excel files contain the specified sheets.")
+            raise ValueError("❌ No DataFrames were processed. Ensure Excel files contain the specified sheets.")
+        
+        print(f"\n🔄 Combining {len(df_list)} DataFrame(s)...")
         
         # Combine all DataFrames
         combined_df = pd.concat(df_list, ignore_index=True)
+        print(f"✅ Combined data - Shape: {combined_df.shape}")
 
-        # Drop duplicates based on 'CUENTA' and 'FECHA_ARCHIVO'
-        combined_df = combined_df.drop_duplicates(subset=['CUENTA', 'FECHA_ARCHIVO'])
-        payments_df = combined_df.drop_duplicates(subset=['CUENTA', 'VALOR'])
+        # 🧹 Remove duplicates
+        print(f"\n🧹 Removing duplicates...")
+        print(f"   • Before: {combined_df.shape[0]:,} records")
         
-        # Count occurrences of each value in the 'CUENTA' column
-        combined_df['RECUENTO'] = combined_df.groupby('CUENTA')['CUENTA'].transform('count')
+        # Drop duplicates based on 'ACCOUNT' and 'FILE_DATE'
+        combined_df = combined_df.drop_duplicates(subset=['ACCOUNT', 'FILE_DATE'])
+        
+        # Create payments DataFrame without duplicate values
+        payments_df = combined_df.drop_duplicates(subset=['ACCOUNT', 'VALUE'])
+        
+        print(f"   • After deduplication: {combined_df.shape[0]:,} records")
+        
+        # 📊 Count occurrences of each value in the 'ACCOUNT' column
+        print(f"🔢 Counting account occurrences...")
+        combined_df['COUNT'] = combined_df.groupby('ACCOUNT')['ACCOUNT'].transform('count')
 
-        # Select only 'CUENTA' and 'RECUENTO'
-        combined_df = combined_df[['CUENTA', 'RECUENTO']]
+        # Select only 'ACCOUNT' and 'COUNT'
+        combined_df = combined_df[['ACCOUNT', 'COUNT']]
+
+        print(f"📊 Final statistics:")
+        print(f"   • Unique accounts: {combined_df['ACCOUNT'].nunique():,}")
+        print(f"   • Max count per account: {combined_df['COUNT'].max()}")
+        print(f"   • Average count per account: {combined_df['COUNT'].mean():.2f}")
 
         if len(combined_df) > 5:
-            combined_df['FECHA'] = datetime.now().strftime('%Y-%m-%d')
-            output_file = f'Pagos sin Aplicar {datetime.now().strftime("%Y-%m-%d_%H-%M")}.csv'
-            output_file_payments = f'Pagos Detalle {datetime.now().strftime("%Y-%m-%d_%H-%M")}.csv'
-            output_file_payments_bigdata = f'Pagos Recuento BIG DATA {datetime.now().strftime("%Y-%m-%d_%H-%M")}.csv'
-            output_folder_ = f"{output_folder}---- Bases para CARGUE ----/"
+            # 📅 Add current date
+            current_date = datetime.now().strftime('%Y-%m-%d')
+            current_datetime = datetime.now().strftime("%Y-%m-%d_%H-%M")
+            combined_df['DATE'] = current_date
+            
+            # 📁 Create output file names
+            output_file = f'Payments without Applied {current_datetime}.csv'
+            output_file_payments = f'Payments Detail {current_datetime}.csv'
+            output_file_payments_bigdata = f'Payments Count BIG DATA {current_datetime}.csv'
+            
+            # 📂 Create output folder paths
+            output_folder_main = f"{output_folder}---- Bases para CARGUE ----/"
             output_folder_detail = f"{output_folder}---- Bases para CRUCE ----/"
             
-            if output_folder and not os.path.exists(output_folder_):
-                os.makedirs(output_folder_)
-            if output_folder and not os.path.exists(output_folder_detail):
-                os.makedirs(output_folder_detail)
+            print(f"\n📁 Creating output folders...")
+            for folder in [output_folder_main, output_folder_detail]:
+                if output_folder and not os.path.exists(folder):
+                    os.makedirs(folder)
+                    print(f"   ✅ Created: {folder}")
             
-            output_path = os.path.join(output_folder_, output_file)
+            # 🛣️ Create output paths
+            output_path = os.path.join(output_folder_main, output_file)
             output_path_payments = os.path.join(output_folder_detail, output_file_payments)
             output_path_payments_bigdata = os.path.join(output_folder_detail, output_file_payments_bigdata)
             
-            combined_df_bigdata = combined_df[['CUENTA', 'RECUENTO']]
-            combined_df = combined_df[['CUENTA', 'FECHA']]
-            payments_df = payments_df[['CUENTA', 'VALOR']]
+            # 📊 Prepare DataFrames for export
+            print(f"\n💾 Preparing DataFrames for export...")
+            combined_df_bigdata = combined_df[['ACCOUNT', 'COUNT']]
+            combined_df_main = combined_df[['ACCOUNT', 'DATE']]
+            payments_df_export = payments_df[['ACCOUNT', 'VALUE']]
             
-            combined_df.to_csv(output_path, index=False, header=True, sep=';')
-            payments_df.to_csv(output_path_payments, index=False, header=True, sep=';')
+            # 💾 Save to CSV
+            print(f"📤 Exporting files...")
+            combined_df_main.to_csv(output_path, index=False, header=True, sep=';')
+            print(f"   ✅ Saved: {output_file} ({len(combined_df_main):,} records)")
+            
+            payments_df_export.to_csv(output_path_payments, index=False, header=True, sep=';')
+            print(f"   ✅ Saved: {output_file_payments} ({len(payments_df_export):,} records)")
+            
             combined_df_bigdata.to_csv(output_path_payments_bigdata, index=False, header=True, sep=';')
-            print(f"\nData PSA saved to {output_path} with {len(combined_df)} records.")
+            print(f"   ✅ Saved: {output_file_payments_bigdata} ({len(combined_df_bigdata):,} records)")
+            
+            print(f"\n🎉 ALL FILES SAVED SUCCESSFULLY!")
+            print(f"📁 Location: {output_folder_main}")
+            
         else:
-            print("\nThe combined DataFrame does not have more than 5 records. No action taken.")
+            print(f"\n⚠️ The combined DataFrame has only {len(combined_df)} records (≤ 5). No action taken.")
+            
     except Exception as e:
-        print(f"An error occurred: {e}")
+        print(f"\n❌ AN ERROR OCCURRED: {e}")
+        print("💡 Please check the input files and folder structure.")
+    
+    print("=" * 70)
+    print("🏁 TRANSFORMATION PROCESS COMPLETED")
+    print("=" * 70)
