@@ -8,35 +8,35 @@ def clean_and_process(df, file_label):
     
     # 🔄 Rename columns for consistency
     if 'REFERENCIA_DIVIDIDA' in df.columns:
-        df = df.rename(columns={'REFERENCIA_DIVIDIDA': 'ACCOUNT'})
-        print(f"   🔄 Renamed 'REFERENCIA_DIVIDIDA' to 'ACCOUNT'")
+        df = df.rename(columns={'REFERENCIA_DIVIDIDA': 'CUENTA'})
+        print(f"   🔄 Renamed 'REFERENCIA_DIVIDIDA' to 'CUENTA'")
     if 'REFERENCIA DIVIDIDA' in df.columns:
-        df = df.rename(columns={'REFERENCIA DIVIDIDA': 'ACCOUNT'})
-        print(f"   🔄 Renamed 'REFERENCIA DIVIDIDA' to 'ACCOUNT'")
+        df = df.rename(columns={'REFERENCIA DIVIDIDA': 'CUENTA'})
+        print(f"   🔄 Renamed 'REFERENCIA DIVIDIDA' to 'CUENTA'")
     if 'CUSTCODE' in df.columns:
-        df = df.rename(columns={'CUSTCODE': 'ACCOUNT'})
-        print(f"   🔄 Renamed 'CUSTCODE' to 'ACCOUNT'")
+        df = df.rename(columns={'CUSTCODE': 'CUENTA'})
+        print(f"   🔄 Renamed 'CUSTCODE' to 'CUENTA'")
         
     if 'MONTO' in df.columns:
-        df = df.rename(columns={'MONTO': 'VALUE'})
-        print(f"   🔄 Renamed 'MONTO' to 'VALUE'")
+        df = df.rename(columns={'MONTO': 'VALOR'})
+        print(f"   🔄 Renamed 'MONTO' to 'VALOR'")
     if 'PAGO' in df.columns:
-        df = df.rename(columns={'PAGO': 'VALUE'})
-        print(f"   🔄 Renamed 'PAGO' to 'VALUE'")
+        df = df.rename(columns={'PAGO': 'VALOR'})
+        print(f"   🔄 Renamed 'PAGO' to 'VALOR'")
     
-    if 'ACCOUNT' in df.columns:
-        print(f"   🔧 Processing 'ACCOUNT' column...")
-        df['ACCOUNT'] = df['ACCOUNT'].astype(str).str.replace('.', '', regex=False).str[-9:]
-        df = df[df['ACCOUNT'].str.isnumeric()]
-        df['FILE'] = file_label
-        print(f"   📋 Added 'FILE' column with value: {file_label}")
+    if 'CUENTA' in df.columns:
+        print(f"   🔧 Processing 'CUENTA' column...")
+        df['CUENTA'] = df['CUENTA'].astype(str).str.replace('.', '', regex=False).str[-9:]
+        df = df[df['CUENTA'].str.isnumeric()]
+        df['ARCHIVO'] = file_label
+        print(f"   📋 Added 'ARCHIVO' column with value: {file_label}")
         
-        if 'VALUE' in df.columns:
-            df['VALUE'] = df['VALUE'].str.replace('.', ',', regex=False)
-            print(f"   💰 Formatted 'VALUE' column")
+        if 'VALOR' in df.columns:
+            df['VALOR'] = df['VALOR'].str.replace('.', ',', regex=False)
+            print(f"   💰 Formatted 'VALOR' column")
         
         print(f"   ✅ Cleaned data - Shape: {df.shape}")
-        return df[['ACCOUNT', 'FILE', 'VALUE']] if not df.empty else None
+        return df[['CUENTA', 'ARCHIVO', 'VALOR']] if not df.empty else None
     else:
         print(f"   ⚠️ No ACCOUNT column found in {file_label} sheet.")
     return None
@@ -129,23 +129,23 @@ def transform_payments_without_applied(input_folder, output_folder):
         print(f"\n🧹 Removing duplicates...")
         print(f"   • Before: {combined_df.shape[0]:,} records")
         
-        # Drop duplicates based on 'ACCOUNT' and 'FILE_DATE'
-        combined_df = combined_df.drop_duplicates(subset=['ACCOUNT', 'FILE_DATE'])
+        # Drop duplicates based on 'CUENTA' and 'FILE_DATE'
+        combined_df = combined_df.drop_duplicates(subset=['CUENTA', 'FILE_DATE'])
         
         # Create payments DataFrame without duplicate values
-        payments_df = combined_df.drop_duplicates(subset=['ACCOUNT', 'VALUE'])
+        payments_df = combined_df.drop_duplicates(subset=['CUENTA', 'VALOR'])
         
         print(f"   • After deduplication: {combined_df.shape[0]:,} records")
         
-        # 📊 Count occurrences of each value in the 'ACCOUNT' column
+        # 📊 Count occurrences of each value in the 'CUENTA' column
         print(f"🔢 Counting account occurrences...")
-        combined_df['COUNT'] = combined_df.groupby('ACCOUNT')['ACCOUNT'].transform('count')
+        combined_df['COUNT'] = combined_df.groupby('CUENTA')['CUENTA'].transform('count')
 
-        # Select only 'ACCOUNT' and 'COUNT'
-        combined_df = combined_df[['ACCOUNT', 'COUNT']]
+        # Select only 'CUENTA' and 'COUNT'
+        combined_df = combined_df[['CUENTA', 'COUNT']]
 
         print(f"📊 Final statistics:")
-        print(f"   • Unique accounts: {combined_df['ACCOUNT'].nunique():,}")
+        print(f"   • Unique accounts: {combined_df['CUENTA'].nunique():,}")
         print(f"   • Max count per account: {combined_df['COUNT'].max()}")
         print(f"   • Average count per account: {combined_df['COUNT'].mean():.2f}")
 
@@ -153,11 +153,11 @@ def transform_payments_without_applied(input_folder, output_folder):
             # 📅 Add current date
             current_date = datetime.now().strftime('%Y-%m-%d')
             current_datetime = datetime.now().strftime("%Y-%m-%d_%H-%M")
-            combined_df['DATE'] = current_date
+            combined_df['FECHA'] = current_date
             
             # 📁 Create output file names
-            output_file = f'Payments without Applied {current_datetime}.csv'
-            output_file_payments = f'Payments Detail {current_datetime}.csv'
+            output_file = f'Pagos sin Aplicar {current_datetime}.csv'
+            output_file_payments = f'PagosSinAplicar Detalle {current_datetime}.csv'
             output_file_payments_bigdata = f'Payments Count BIG DATA {current_datetime}.csv'
             
             # 📂 Create output folder paths
@@ -177,9 +177,9 @@ def transform_payments_without_applied(input_folder, output_folder):
             
             # 📊 Prepare DataFrames for export
             print(f"\n💾 Preparing DataFrames for export...")
-            combined_df_bigdata = combined_df[['ACCOUNT', 'COUNT']]
-            combined_df_main = combined_df[['ACCOUNT', 'DATE']]
-            payments_df_export = payments_df[['ACCOUNT', 'VALUE']]
+            combined_df_bigdata = combined_df[['CUENTA', 'COUNT']]
+            combined_df_main = combined_df[['CUENTA', 'FECHA']]
+            payments_df_export = payments_df[['CUENTA', 'VALOR']]
             
             # 💾 Save to CSV
             print(f"📤 Exporting files...")

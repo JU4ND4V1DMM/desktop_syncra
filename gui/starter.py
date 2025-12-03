@@ -1374,7 +1374,7 @@ class Init_APP():
             Mbox_In_Process.setText("Por favor espere la ventana de confirmación, mientras se procesa la carpeta.")
             Mbox_In_Process.exec()
             
-            self.Base = gui.payments_not_applied.Transform_Payments_without_Applied(self.folder_path_IVR, self.folder_path)
+            self.Base = gui.payments_not_applied.transform_payments_without_applied(self.folder_path_IVR, self.folder_path)
             
             Mbox_In_Process = QMessageBox() 
             Mbox_In_Process.setWindowTitle("")
