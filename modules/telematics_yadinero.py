@@ -30,6 +30,13 @@ def function_complete_telematics(path, output_directory, partitions, process_res
         elif process_resource == "IVR":
             Data_Frame = conversion_process(Data_Frame, output_directory, partitions, Contacts_Min="NA")
     
+    columns_filter = ["Identificacion", "ID_YaDinero", "nombrecompleto", "dias_de_mora", "saldo_actual",
+        "valor_desembolsado", "fecha_desembolso", "valor_a_pagar", "Form_Moneda", "fechagestion", "fechapromesa",
+        "valorpromesa", "mejorperfil", "ultimoperfil", "mejorperfil_mes", "ultimoperfil_mes", "valor_pago",
+        "fecha_pago", "Dato_Contacto", "NOMBRE CORTO", "Hora_Envio", "Hora_Real", "Fecha_Hoy"]
+    
+    Data_Frame = Data_Frame.select(columns_filter)
+    
     Save_Data_Frame(Data_Frame, output_directory, partitions, process_resource)
     
     return Data_Frame
