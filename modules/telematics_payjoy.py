@@ -124,37 +124,35 @@ def Phone_Data(Data_):
     return final_df
 
 def Email_Data(Data_):
-
+    """
+    Procesa correos separados por | en una columna
+    """
     cleaned_df = Data_.withColumn(
         "correos_limpios",
-        regexp_replace("correos_agregados", "\\[|\\]|\\{|\\}|\\s+|\\\"", "")
+        regexp_replace("correos_agregados", r'\[|\]|\{|\}|\s+|\"', "")
     )
 
-    array_df = cleaned_df.withColumn(
+    exploded_df = cleaned_df.withColumn(
         "correos_array",
-        split("correos_limpios","\\|")
+        split(col("correos_limpios"), r"\|")
+    ).withColumn(
+        "Dato_Contacto",
+        explode(col("correos_array"))
     )
-
-    exploded_df = array_df.withColumn("Dato_Contacto_1", explode("correos_array"))
-
+    
     final_df = exploded_df.withColumn(
-        "correos_array_string",
-        array_join("correos_array", ", ")
+        "Dato_Contacto",
+        regexp_replace(
+            col("Dato_Contacto"),
+            r'\[|\]|\{|\}|\s+|\"|^\||\|$', 
+            ""
+        )
+    ).filter(
+        (col("Dato_Contacto") != "") &
+        (col("Dato_Contacto").isNotNull()) 
     )
 
-    final_df = final_df.drop("correos", "correos_limpios", "correos_array", "correos_array_string")
-    
-    column_new = ["correos_agregados", "Dato_Contacto_1"]
-    columns_to_drop = column_new
-    Stacked_Data_Frame = final_df.select("*", *columns_to_drop)
-    
-    Stacked_Data_Frame = Stacked_Data_Frame.select(
-        "*", \
-        expr(f"stack({len(columns_to_drop)}, {', '.join(columns_to_drop)}) as Dato_Contacto")
-        )
-    
-    final_df = Stacked_Data_Frame.drop(*columns_to_drop)
-    Stacked_Data_Frame = final_df.select("*")
+    final_df = final_df.drop("correos_array", "correos_limpios")
     
     return final_df
 
