@@ -12,6 +12,13 @@ COLUMNS_SMS_SAEM = [
     "ejecución", "progresivo", "periodo", "tolva", "estado_atr", "rango_validacion"
 ]
 
+COLUMNS_SMS_SAEM_2 = ['respuesta doble via', 'fecha de creacion', 'enviados', 'registros', 
+    'total', 'fecha de finalización', 'codigo estado', 'doble via', 'id', 'flash', 'créditos', 
+    'estado', 'aperuras landing', 'bulk', 'nombre de la campaña', 'tipo de campaña', 'tipo servicio', 
+    'codigo servicio', 'errados', 'id usuario', 'progresivo', 'fecha de inicio', 'periodo', 
+    'nombre de usuario', 'país'
+]
+
 COLUMNS_IVR_SAEM = [
     "pais", "id campaña", "nombre campaña", "usuario", "id usuario",
     "fecha programada", "fecha registro", "archivo telefonos", "audio",
@@ -80,7 +87,11 @@ def classify_excel_file(file_path):
         elif file_extension == '.csv':
             # --- CSV File Handling ---
             # Read only the header row (nrows=0) and specify the delimiter
-            df_temp = pd.read_csv(file_path, nrows=0, sep=',')
+            try:
+                df_temp = pd.read_csv(file_path, nrows=0, sep=None, engine='python', encoding='utf-8')
+            except UnicodeDecodeError:
+                df_temp = pd.read_csv(file_path, nrows=0, sep=None, engine='python', encoding='latin-1')
+                
             normalized_file_headers = normalize_columns(df_temp.columns.tolist())
             all_headers.update(normalized_file_headers)
 
@@ -102,7 +113,7 @@ def classify_excel_file(file_path):
             return "wisebot_base", present_headers
         elif all(col in present_headers for col in COLUMNS_WISEBOT_BASE_2):
             return "wisebot_base", present_headers
-        elif all(col in present_headers for col in COLUMNS_SMS_SAEM):
+        elif all(col in present_headers for col in COLUMNS_SMS_SAEM_2):
             return "sms_saem", present_headers
         elif all(col in present_headers for col in COLUMNS_IVR_SAEM):
             return "ivr_saem", present_headers
@@ -135,16 +146,44 @@ def _read_and_normalize_excel_data(file_path):
 
 def _read_and_normalize_csv_data(file_path):
     """
-    Función auxiliar para leer un archivo CSV delimitado por ',' (coma),
-    normalizar los nombres de sus columnas y devolver el DataFrame completo.
+    Función auxiliar para leer un archivo CSV detectando automáticamente
+    el delimitador (',' o ';'), normalizar los nombres de sus columnas 
+    y devolver el DataFrame completo.
     """
-    # Usamos pd.read_csv y especificamos el delimitador (sep=',')
-    df = pd.read_csv(file_path, sep=',') 
+    # Intentar diferentes encodings y detectar separador automáticamente
+    encodings = ['utf-8', 'latin-1', 'cp1252', 'iso-8859-1']
     
-    # Normalizamos los nombres de las columnas
-    df.columns = normalize_columns(df.columns)
+    for encoding in encodings:
+        try:
+            # Leer solo la primera línea para detectar separador
+            with open(file_path, 'r', encoding=encoding) as f:
+                first_line = f.readline()
+            
+            # Detectar separador (comma vs semicolon)
+            comma_count = first_line.count(',')
+            semicolon_count = first_line.count(';')
+            
+            # Usar el más frecuente, coma por defecto
+            sep = ';' if semicolon_count > comma_count else ','
+            
+            # Leer el archivo completo
+            df = pd.read_csv(file_path, sep=sep, encoding=encoding)
+            
+            # Normalizar los nombres de las columnas
+            df.columns = normalize_columns(df.columns)
+            
+            return df
+            
+        except (UnicodeDecodeError, pd.errors.ParserError):
+            continue  # Intentar con siguiente encoding
     
-    return df
+    # Si todos los encodings fallan, intentar con detección automática
+    try:
+        df = pd.read_csv(file_path, sep=None, engine='python', encoding_errors='ignore')
+        df.columns = normalize_columns(df.columns)
+        return df
+    except Exception as e:
+        raise ValueError(f"No se pudo leer el archivo {file_path}: {str(e)}")
 
 # All processing functions now return the processed DataFrame or None
 def process_sms_saem(file_path, present_headers):
@@ -154,7 +193,7 @@ def process_sms_saem(file_path, present_headers):
     """
     print(f"🚀 Starting SMS SAEM processing for: '{file_path}'")
     try:
-        df = _read_and_normalize_excel_data(file_path)
+        df = _read_and_normalize_csv_data(file_path)
         print(f"✅ Consolidated rows: {len(df)}")
         print("📋 Normalized columns:", df.columns.tolist())
 
@@ -162,25 +201,25 @@ def process_sms_saem(file_path, present_headers):
         df['source_file_type'] = 'SMS_SAEM'
 
         # --- SMS SAEM SPECIFIC AGGREGATION ---
-        if 'ejecutados' in df.columns and 'fecha inicio' in df.columns and 'username' in df.columns:
-            print("📊 Performing aggregation for 'ejecutados' by 'fecha inicio' and 'username'...")
+        if 'enviados' in df.columns and 'fecha de inicio' in df.columns and 'nombre de la campaña' in df.columns:
+            print("📊 Performing aggregation for 'enviados' by 'fecha de inicio' and 'nombre de la campaña'...")
 
-            # 1. Convert 'ejecutados' to numeric, filling NaNs with 0
-            df['ejecutados'] = pd.to_numeric(df['ejecutados'], errors='coerce').fillna(0)
-            print("✅ 'ejecutados' column converted to numeric and NaNs filled with 0.")
+            # 1. Convert 'enviados' to numeric, filling NaNs with 0
+            df['enviados'] = pd.to_numeric(df['enviados'], errors='coerce').fillna(0)
+            print("✅ 'enviados' column converted to numeric and NaNs filled with 0.")
 
-            # 2. Convert 'fecha inicio' to datetime and extract the date part
-            df['fecha inicio'] = pd.to_datetime(df['fecha inicio'], errors='coerce')
-            df['fecha_inicio_dia'] = df['fecha inicio'].dt.floor('h') # Get just the date (YYYY-MM-DD)
-            print("✅ 'fecha inicio' converted to datetime and date part extracted.")
+            # 2. Convert 'fecha de inicio' to datetime and extract the date part
+            df['fecha de inicio'] = pd.to_datetime(df['fecha de inicio'], errors='coerce')
+            df['fecha_inicio_dia'] = df['fecha de inicio'].dt.floor('h') # Get just the date (YYYY-MM-DD)
+            print("✅ 'fecha de inicio' converted to datetime and date part extracted.")
 
             # Filter out rows where 'fecha_inicio_dia' is NaT (invalid date) before grouping
             df_filtered_for_agg = df.dropna(subset=['fecha_inicio_dia'])
 
             if not df_filtered_for_agg.empty:
-                # 3. Group by 'fecha_inicio_dia' and 'username' and sum 'ejecutados'
-                sms_saem_aggregated_df = df_filtered_for_agg.groupby(['fecha_inicio_dia', 'username'])['ejecutados'].sum().reset_index()
-                sms_saem_aggregated_df.rename(columns={'ejecutados': 'suma_ejecutados_diarios'}, inplace=True)
+                # 3. Group by 'fecha_inicio_dia' and 'nombre de la campaña' and sum 'enviados'
+                sms_saem_aggregated_df = df_filtered_for_agg.groupby(['fecha_inicio_dia', 'nombre de la campaña'])['enviados'].sum().reset_index()
+                sms_saem_aggregated_df.rename(columns={'enviados': 'suma_ejecutados_diarios'}, inplace=True)
                 sms_saem_aggregated_df['contador_registros'] = sms_saem_aggregated_df['suma_ejecutados_diarios'].copy()
                 sms_saem_aggregated_df['source_file_type'] = 'SMS SAEM'
 
@@ -195,7 +234,7 @@ def process_sms_saem(file_path, present_headers):
                 return df # Return original DataFrame if aggregation failed
 
         else:
-            print("⚠️ Skipping aggregation: 'ejecutados', 'fecha inicio', or 'username' column(s) not found.")
+            print("⚠️ Skipping aggregation: 'enviados', 'fecha de inicio', or 'nombre de la campaña' column(s) not found.")
 
         print(f"✅ SMS SAEM processing finished.")
         return df
@@ -253,7 +292,7 @@ def process_ivr_saem(file_path, present_headers):
         
         # Define the mapping
         campaign_mapping = {
-            'pash': ['pash'],
+            'pash': ['pash', 'creditosomos'],
             'gmac': ['gm', 'insoluto', 'chevrolet'],
             'claro': ['210', '0_', 'rr', 'ascard', 'bscs', 'prechurn', 'churn', 'potencial', 'prepotencial', 'descuento', 'esp', '30_', 'prees', 'preord'],
             'puntored': ['puntored'],
@@ -346,7 +385,7 @@ def process_ivr_ipcom(file_path, present_headers):
         
         # Define the mapping
         campaign_mapping = {
-            'pash': ['pash'],
+            'pash': ['pash', 'creditosomos'],
             'gmac': ['gm', 'insoluto', 'chevrolet'],
             'claro': ['210', '0_30', 'rr', 'ascard', 'bscs', 'prechurn', 'churn', 'potencial', 'prepotencial', 'descuento', 'esp', '30_', 'prees', 'preord'],
             'puntored': ['puntored'],
@@ -502,7 +541,7 @@ def process_sms_masivian(file_path, present_headers):
         
         # Define the mapping (provided in the prompt)
         campaign_mapping = {
-            'pash': ['pash'],
+            'pash': ['pash', 'creditosomos'],
             'gmac': ['gm', 'insoluto', 'chevrolet'],
             'claro': ['210', '_30', 'rr', 'ascard', 'bscs', 'prechurn', 'churn', 'potencial', 'prepotencial', 'especial'],
             'puntored': ['puntored'],
@@ -692,13 +731,13 @@ def data_to_single_dataframe(list_of_dataframes):
         'suma_total_procesados_diarios': 'registros_movimiento',
         'tiempo_llamada': 'registros_movimiento',
         'suma_ejecutados_diarios': 'registros_movimiento',
-        'suma_ejecutados_diarios': 'registros_movimiento'
     }
 
     grouping_columns_map = {
         'remitente': 'marca_agrupada_campana',
         'campaign_group': 'marca_agrupada_campana',
         'marca': 'marca_agrupada_campana', # This might be present in WISEBOT, for instance
+        'nombre de usuario': 'marca_agrupada_campana', # This might be present in SMS 2, for instance
         'campaña': 'marca_agrupada_campana', # This might be present in WISEBOT, for instance
         'username': 'marca_agrupada_campana' # Specific to SMS_SAEM
     }
@@ -707,6 +746,7 @@ def data_to_single_dataframe(list_of_dataframes):
     processed_and_renamed_dfs = []
 
     for df in list_of_dataframes:
+        print(df.head(2))  # Print first 2 rows for debugging
         if df is not None and not df.empty:
             if 'source_file_type' in df.columns:
                 current_source_type = df['source_file_type'].iloc[0]
@@ -729,6 +769,10 @@ def data_to_single_dataframe(list_of_dataframes):
                     for old_name, new_name in grouping_columns_map.items():
                         if old_name == "marca" and old_name in df_to_add.columns:
                             print("✅ 'marca' column renamed to 'marca_agrupada_campana'")
+                            df_to_add.rename(columns={old_name: new_name}, inplace=True)
+                            marca_renamed = True
+                        elif old_name == "nombre de la campaña" and old_name in df_to_add.columns:
+                            print("✅ 'nombre de la campaña' column renamed to 'marca_agrupada_campana'")
                             df_to_add.rename(columns={old_name: new_name}, inplace=True)
                             marca_renamed = True
                         elif old_name == "campaña" and old_name in df_to_add.columns and marca_renamed:
@@ -819,7 +863,7 @@ def process_excel_files_in_folder(input_folder):
         input_folder (str): The path to the folder containing Excel files to process.
         output_folder (str): The path to the folder where processed data will be saved.
     """
-    print(f"🚀 Starting processing of files in '{input_folder}'")
+    print(f"\n\n🚀 Starting processing REGISTERS in '{input_folder}'")
     if not os.path.exists(input_folder):
         print(f"❌ Error: Input folder '{input_folder}' does not exist.")
         return None
@@ -886,7 +930,7 @@ def process_excel_files_in_folder(input_folder):
         
         print(f"\n✔️ Counter of processed files: {len(list_of_all_processed_dataframes)}")
         
-    print(f"\n✅ Finished processing files in '{input_folder}'")
+    print(f"✅ Finished processing files in '{input_folder}'")
 
     # Save all collected DataFrames to a single Excel sheet
     combined_df = data_to_single_dataframe(list_of_all_processed_dataframes)

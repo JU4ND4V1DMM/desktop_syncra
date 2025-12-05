@@ -87,6 +87,13 @@ def process_csv(file_path):
 def clean_dataframe(df):
     """Clean the DataFrame by renaming columns and applying cleaning functions."""
     # Rename and clean various columns in the DataFrame
+    
+    if 'TIPO_OPERACION' in df.columns:
+        print(f"\nBefore - Total rows: {len(df)}")
+        df_filtrado = df[df['TIPO_OPERACION'] != "AJUSTE"]
+        print(f"After - Total rows: {len(df_filtrado)}")
+        df = df_filtrado
+        
     if 'Cuenta' in df.columns:
         df['Cuenta'] = df['Cuenta'].apply(clean_numeric_cta)
         df = df.rename(columns={'Cuenta': 'obligacion'})
