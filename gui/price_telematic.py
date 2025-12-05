@@ -12,6 +12,13 @@ COLUMNS_SMS_SAEM = [
     "ejecución", "progresivo", "periodo", "tolva", "estado_atr", "rango_validacion"
 ]
 
+COLUMNS_SMS_SAEM_2 = ['respuesta doble via', 'fecha de creacion', 'enviados', 'registros', 
+    'total', 'fecha de finalización', 'codigo estado', 'doble via', 'id', 'flash', 'créditos', 
+    'estado', 'aperuras landing', 'bulk', 'nombre de la campaña', 'tipo de campaña', 'tipo servicio', 
+    'codigo servicio', 'errados', 'id usuario', 'progresivo', 'fecha de inicio', 'periodo', 
+    'nombre de usuario', 'país'
+]
+
 COLUMNS_IVR_SAEM = [
     "pais", "id campaña", "nombre campaña", "usuario", "id usuario",
     "fecha programada", "fecha registro", "archivo telefonos", "audio",
@@ -83,7 +90,11 @@ def classify_excel_file(file_path):
         elif file_extension == '.csv':
             # --- 📊 CSV File Handling ---
             print(f"   📑 Reading CSV file...")
-            df_temp = pd.read_csv(file_path, nrows=0, sep=',')
+            try:
+                df_temp = pd.read_csv(file_path, nrows=0, sep=None, engine='python', encoding='utf-8')
+            except UnicodeDecodeError:
+                df_temp = pd.read_csv(file_path, nrows=0, sep=None, engine='python', encoding='latin-1')
+             
             normalized_file_headers = normalize_columns(df_temp.columns.tolist())
             all_headers.update(normalized_file_headers)
 
@@ -105,7 +116,7 @@ def classify_excel_file(file_path):
             return "wisebot_base", present_headers
         elif all(col in present_headers for col in COLUMNS_WISEBOT_BASE_2):
             return "wisebot_base", present_headers
-        elif all(col in present_headers for col in COLUMNS_SMS_SAEM):
+        elif all(col in present_headers for col in COLUMNS_SMS_SAEM_2):
             return "sms_saem", present_headers
         elif all(col in present_headers for col in COLUMNS_IVR_SAEM):
             return "ivr_saem", present_headers
@@ -128,33 +139,97 @@ def classify_excel_file(file_path):
 
 # --- Step 4: Processing Functions for Each Type ---
 def _read_and_normalize_excel_data(file_path):
-    """📚 Helper function to read all sheets of an Excel and normalize columns."""
-    print(f"   📖 Reading all sheets...")
+    """Helper function to read all sheets of an Excel and normalize columns."""
     xls = pd.ExcelFile(file_path)
     consolidated_df = pd.DataFrame()
-    sheet_count = 0
-    
     for sheet_name in xls.sheet_names:
-        sheet_count += 1
-        print(f"   📋 Sheet {sheet_count}: {sheet_name[:20]}...", end=" ")
         df_sheet = xls.parse(sheet_name)
         df_sheet.columns = normalize_columns(df_sheet.columns)
         consolidated_df = pd.concat([consolidated_df, df_sheet], ignore_index=True)
-        print(f"✅ ({len(df_sheet)} rows)")
-    
-    print(f"   📊 Total consolidated rows: {len(consolidated_df)}")
     return consolidated_df
+
+# --- Step 4: Processing Functions for Each Type ---
+def _read_and_normalize_csv_data(file_path):
+    """
+    Función auxiliar para leer un archivo CSV detectando automáticamente
+    el delimitador (',' o ';'), normalizar los nombres de sus columnas 
+    y devolver el DataFrame completo.
+    """
+    # Intentar diferentes encodings y detectar separador automáticamente
+    encodings = ['utf-8', 'latin-1', 'cp1252', 'iso-8859-1']
+    
+    for encoding in encodings:
+        try:
+            # Leer solo la primera línea para detectar separador
+            with open(file_path, 'r', encoding=encoding) as f:
+                first_line = f.readline()
+            
+            # Detectar separador (comma vs semicolon)
+            comma_count = first_line.count(',')
+            semicolon_count = first_line.count(';')
+            
+            # Usar el más frecuente, coma por defecto
+            sep = ';' if semicolon_count > comma_count else ','
+            
+            # Leer el archivo completo
+            df = pd.read_csv(file_path, sep=sep, encoding=encoding)
+            
+            # Normalizar los nombres de las columnas
+            df.columns = normalize_columns(df.columns)
+            
+            return df
+            
+        except (UnicodeDecodeError, pd.errors.ParserError):
+            continue  # Intentar con siguiente encoding
+    
+    # Si todos los encodings fallan, intentar con detección automática
+    try:
+        df = pd.read_csv(file_path, sep=None, engine='python', encoding_errors='ignore')
+        df.columns = normalize_columns(df.columns)
+        return df
+    except Exception as e:
+        raise ValueError(f"No se pudo leer el archivo {file_path}: {str(e)}")
 
 def _read_and_normalize_csv_data(file_path):
     """
-    📚 Helper function to read a CSV file delimited by ',' (comma),
-    normalize column names, and return the complete DataFrame.
+    Función auxiliar para leer un archivo CSV detectando automáticamente
+    el delimitador (',' o ';'), normalizar los nombres de sus columnas 
+    y devolver el DataFrame completo.
     """
-    print(f"   📖 Reading CSV file...")
-    df = pd.read_csv(file_path, sep=',') 
-    df.columns = normalize_columns(df.columns)
-    print(f"   📊 Total rows: {len(df)}")
-    return df
+    # Intentar diferentes encodings y detectar separador automáticamente
+    encodings = ['utf-8', 'latin-1', 'cp1252', 'iso-8859-1']
+    
+    for encoding in encodings:
+        try:
+            # Leer solo la primera línea para detectar separador
+            with open(file_path, 'r', encoding=encoding) as f:
+                first_line = f.readline()
+            
+            # Detectar separador (comma vs semicolon)
+            comma_count = first_line.count(',')
+            semicolon_count = first_line.count(';')
+            
+            # Usar el más frecuente, coma por defecto
+            sep = ';' if semicolon_count > comma_count else ','
+            
+            # Leer el archivo completo
+            df = pd.read_csv(file_path, sep=sep, encoding=encoding)
+            
+            # Normalizar los nombres de las columnas
+            df.columns = normalize_columns(df.columns)
+            
+            return df
+            
+        except (UnicodeDecodeError, pd.errors.ParserError):
+            continue  # Intentar con siguiente encoding
+    
+    # Si todos los encodings fallan, intentar con detección automática
+    try:
+        df = pd.read_csv(file_path, sep=None, engine='python', encoding_errors='ignore')
+        df.columns = normalize_columns(df.columns)
+        return df
+    except Exception as e:
+        raise ValueError(f"No se pudo leer el archivo {file_path}: {str(e)}")
 
 # All processing functions now return the processed DataFrame or None
 def process_sms_saem(file_path, present_headers):
@@ -163,32 +238,30 @@ def process_sms_saem(file_path, present_headers):
     📈 Includes aggregation of 'ejecutados' by 'fecha inicio' (day) and 'username'.
     """
     print(f"🚀 *** Starting SMS SAEM processing for: '{file_path}' ***")
-    df = _read_and_normalize_excel_data(file_path)
+    df = _read_and_normalize_csv_data(file_path)
     print(f"   🎯 Normalized columns: {len(df.columns)}")
 
     # Add a 'source_file_type' column to identify the data source later in the combined sheet
     df['source_file_type'] = 'SMS_SAEM'
 
     # --- SMS SAEM SPECIFIC AGGREGATION ---
-    if 'ejecutados' in df.columns and 'fecha inicio' in df.columns and 'username' in df.columns:
-        print("   📊 Performing aggregation for 'ejecutados' by 'fecha inicio' and 'username'...")
+    if 'enviados' in df.columns and 'fecha de inicio' in df.columns and 'nombre de la campaña' in df.columns:
+        print("   📊 Performing aggregation for 'enviados' by 'fecha de inicio' and 'nombre de la campaña'...")
 
-        # 1. Convert 'ejecutados' to numeric, filling NaNs with 0
-        df['ejecutados'] = pd.to_numeric(df['ejecutados'], errors='coerce').fillna(0)
-        print("      ✅ 'ejecutados' column converted to numeric and NaNs filled with 0.")
-
-        # 2. Convert 'fecha inicio' to datetime and extract the date part
-        df['fecha inicio'] = pd.to_datetime(df['fecha inicio'], errors='coerce')
-        df['fecha_inicio_dia'] = df['fecha inicio'].dt.floor('D') # Get just the date (YYYY-MM-DD)
-        print("      ✅ 'fecha inicio' converted to datetime and date part extracted.")
-
+        # 1. Convert 'enviados' to numeric, filling NaNs with 0
+        df['enviados'] = pd.to_numeric(df['enviados'], errors='coerce').fillna(0)
+        print("      ✅ 'enviados' column converted to numeric and NaNs filled with 0.")
+        # 2. Convert 'fecha de inicio' to datetime and extract the date part
+        df['fecha de inicio'] = pd.to_datetime(df['fecha de inicio'], errors='coerce')
+        df['fecha_inicio_dia'] = df['fecha de inicio'].dt.floor('D') # Get just the date (YYYY-MM-DD)
+        print("      ✅ 'fecha de inicio' converted to datetime and date part extracted.")
         # Filter out rows where 'fecha_inicio_dia' is NaT (invalid date) before grouping
         df_filtered_for_agg = df.dropna(subset=['fecha_inicio_dia'])
 
         if not df_filtered_for_agg.empty:
-            # 3. Group by 'fecha_inicio_dia' and 'username' and sum 'ejecutados'
-            sms_saem_aggregated_df = df_filtered_for_agg.groupby(['fecha_inicio_dia', 'username'])['ejecutados'].sum().reset_index()
-            sms_saem_aggregated_df.rename(columns={'ejecutados': 'suma_ejecutados_diarios'}, inplace=True)
+            # 3. Group by 'fecha_inicio_dia' and 'nombre de usuario' and sum 'enviados'
+            sms_saem_aggregated_df = df_filtered_for_agg.groupby(['fecha_inicio_dia', 'nombre de usuario'])['enviados'].sum().reset_index()
+            sms_saem_aggregated_df.rename(columns={'enviados': 'suma_ejecutados_diarios'}, inplace=True)
             sms_saem_aggregated_df['source_file_type'] = 'SMS_SAEM_AGGREGATED'
 
             print(f"\n   📈 Aggregated SMS SAEM Data: {len(sms_saem_aggregated_df)} rows")
@@ -669,6 +742,7 @@ def save_combined_data_to_single_excel_sheet(dataframes_prices, dataframe_regist
         'remitente': 'agrupador_campana_usuario',
         'campaign_group': 'agrupador_campana_usuario',
         'marca': 'agrupador_campana_usuario',
+        'nombre de usuario': 'agrupador_campana_usuario',
         'campaña': 'agrupador_campana_usuario',
         'username': 'agrupador_campana_usuario'
     }
@@ -702,6 +776,9 @@ def save_combined_data_to_single_excel_sheet(dataframes_prices, dataframe_regist
                     marca_renamed = False
                     for old_name, new_name in grouping_columns_map.items():
                         if old_name == "marca" and old_name in df_to_add.columns:
+                            df_to_add.rename(columns={old_name: new_name}, inplace=True)
+                            marca_renamed = True
+                        elif old_name == "nombre de la campaña" and old_name in df_to_add.columns:
                             df_to_add.rename(columns={old_name: new_name}, inplace=True)
                             marca_renamed = True
                         elif old_name == "campaña" and old_name in df_to_add.columns and marca_renamed:

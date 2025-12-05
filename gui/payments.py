@@ -89,9 +89,7 @@ def clean_dataframe(df):
     # Rename and clean various columns in the DataFrame
     
     if 'TIPO_OPERACION' in df.columns:
-        print(f"\nBefore - Total rows: {len(df)}")
         df_filtrado = df[df['TIPO_OPERACION'] != "AJUSTE"]
-        print(f"After - Total rows: {len(df_filtrado)}")
         df = df_filtrado
         
     if 'Cuenta' in df.columns:

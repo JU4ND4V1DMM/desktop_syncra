@@ -737,7 +737,7 @@ def data_to_single_dataframe(list_of_dataframes):
         'remitente': 'marca_agrupada_campana',
         'campaign_group': 'marca_agrupada_campana',
         'marca': 'marca_agrupada_campana', # This might be present in WISEBOT, for instance
-        'nombre de usuario': 'marca_agrupada_campana', # This might be present in SMS 2, for instance
+        'nombre de la campaña': 'marca_agrupada_campana', # This might be present in SMS 2, for instance
         'campaña': 'marca_agrupada_campana', # This might be present in WISEBOT, for instance
         'username': 'marca_agrupada_campana' # Specific to SMS_SAEM
     }
@@ -746,7 +746,6 @@ def data_to_single_dataframe(list_of_dataframes):
     processed_and_renamed_dfs = []
 
     for df in list_of_dataframes:
-        print(df.head(2))  # Print first 2 rows for debugging
         if df is not None and not df.empty:
             if 'source_file_type' in df.columns:
                 current_source_type = df['source_file_type'].iloc[0]
