@@ -12,10 +12,10 @@ spark = get_spark_session()
 
 sqlContext = SQLContext(spark)
 
-### Proceso con todas las funciones desarrolladas
+### Process with all developed functions 📊
 def function_complete_telematics(path, output_directory, partitions, process_resource):
     
-    print(f"Processing Telematics YaDinero with resource: {process_resource}")
+    print(f"🚀 Processing Telematics YaDinero with resource: {process_resource}")
     
     Data_Frame = First_Changes_DataFrame(path)
     if process_resource == "EMAIL":
@@ -30,6 +30,25 @@ def function_complete_telematics(path, output_directory, partitions, process_res
         elif process_resource == "IVR":
             Data_Frame = conversion_process(Data_Frame, output_directory, partitions, Contacts_Min="NA")
     
+    # Filter rows where profile columns contain unwanted values 🚫
+    filter_conditions = [
+        "Al dia",
+        "Fallecido", 
+        "Numero Errado",
+        "Paz y Salvo",
+        "Posible Fraude",
+        "Reclamacion",
+        "Ya Pago"
+    ]
+    
+    # Create filter condition to exclude rows where any profile column contains these values
+    Data_Frame = Data_Frame.filter(
+        ~col("mejorperfil").isin(filter_conditions) &
+        ~col("ultimoperfil").isin(filter_conditions) &
+        ~col("mejorperfil_mes").isin(filter_conditions) &
+        ~col("ultimoperfil_mes").isin(filter_conditions)
+    )
+    
     columns_filter = ["Identificacion", "ID_YaDinero", "nombrecompleto", "dias_de_mora", "saldo_actual",
         "valor_desembolsado", "fecha_desembolso", "valor_a_pagar", "Form_Moneda", "fechagestion", "fechapromesa",
         "valorpromesa", "mejorperfil", "ultimoperfil", "mejorperfil_mes", "ultimoperfil_mes", "valor_pago",
@@ -41,14 +60,37 @@ def function_complete_telematics(path, output_directory, partitions, process_res
     
     return Data_Frame
 
-### Cambios Generales
+### General Changes 🔧
 def First_Changes_DataFrame(Root_Path):
-    # Read the first line of the CSV file (the header)
+    # Read the complete file with Spark 📖
+    print("📖 Reading CSV with Spark...")
+    Data_Root = spark.read.csv(Root_Path, header=False, sep=";")
+    
+    print(f"📊 Original DataFrame columns: {len(Data_Root.columns)}")
+    
+    # Delete column at position 51 (index 50) if it exists 🗑️
+    if len(Data_Root.columns) > 50:
+        print(f"🗑️ Removing column at position 51 (index 50)")
+        
+        # Create list of columns excluding the 51st
+        columns_before_51 = Data_Root.columns[:50]  # columns 0-49
+        columns_after_51 = Data_Root.columns[51:]   # columns 52 onward
+        
+        # Combine without column 51
+        Data_Root = Data_Root.select(*(columns_before_51 + columns_after_51))
+    
+    print(f"📊 DataFrame columns after removal: {len(Data_Root.columns)}")
+    
+    # Now read the header to get the names 📝
     with open(Root_Path, 'r', encoding='utf-8') as f:
         reader = csv.reader(f, delimiter=';')
         raw_header = next(reader)
-
-    # Rename duplicated column names by adding suffixes (_1, _2, etc.)
+    
+    # Also delete column 51 from the header 🗑️
+    if len(raw_header) > 50:
+        raw_header = raw_header[:50] + raw_header[51:]
+    
+    # Rename duplicated column names
     seen = {}
     final_cols = []
     for colname in raw_header:
@@ -58,16 +100,25 @@ def First_Changes_DataFrame(Root_Path):
         else:
             seen[colname] = 0
             final_cols.append(colname)
-
-    # Read the CSV without header and assign the new unique column names
-    Data_Root = spark.read.csv(Root_Path, header=False, sep=";").toDF(*final_cols)
-
+    
+    # Verify that the numbers match 🔍
+    if len(Data_Root.columns) != len(final_cols):
+        print(f"⚙️ Adjusting: DataFrame has {len(Data_Root.columns)} cols, "
+              f"header has {len(final_cols)} names")
+        # Take the minimum
+        min_len = min(len(Data_Root.columns), len(final_cols))
+        Data_Root = Data_Root.select(*Data_Root.columns[:min_len])
+        final_cols = final_cols[:min_len]
+    
+    # Assign names
+    Data_Root = Data_Root.toDF(*final_cols)
+    
     # Cast all columns to StringType
     DF = Data_Root.select([col(c).cast(StringType()).alias(c) for c in Data_Root.columns])
     
     return DF
 
-### Limpieza de carácteres especiales en la columna de cuenta
+### Clean special characters in the account column 🧹
 def change_character_account (Data_, Column):
 
     character_list = ["-"]
@@ -78,7 +129,7 @@ def change_character_account (Data_, Column):
 
     return Data_
 
-### Renombramiento de columnas
+### Renaming columns ✏️
 def Renamed_Column(Data_Frame):
 
     Data_Frame = Data_Frame.withColumnRenamed("cuenta", "ID_YaDinero")
@@ -86,7 +137,7 @@ def Renamed_Column(Data_Frame):
 
     return Data_Frame
 
-### Proceso de guardado del RDD
+### Process to save the RDD 💾
 def Save_Data_Frame (Data_Frame, Directory_to_Save, partitions, resource):
 
     Type_File = f"BD Ya Dinero {resource}"
@@ -96,10 +147,10 @@ def Save_Data_Frame (Data_Frame, Directory_to_Save, partitions, resource):
 
     return Data_Frame
 
-### Dinamización de columnas de celulares
+### Dynamization of phone columns 📱
 def Phone_Data(Data_):
 
-    print("Primer contador:", Data_.count())
+    print("🔢 First count:", Data_.count())
 
     columns_to_stack_celular = [f"celular{i}" for i in range(1, 11)]
     columns_to_stack_fijo = [f"fijo{i}" for i in range(1, 5)]
@@ -116,7 +167,7 @@ def Phone_Data(Data_):
     Data_ = Stacked_Data_Frame.drop(*columns_to_drop_contact)
     Stacked_Data_Frame = Data_.select("*")
 
-    print("Segundo contador:", Data_.count())
+    print("🔢 Second count:", Data_.count())
     
     return Stacked_Data_Frame
 
@@ -181,17 +232,11 @@ def conversion_process (Data_Frame, output_directory, partitions, Contacts_Min):
     Data_ = Data_.withColumn("Hora_Real", lit(now.strftime("%H:%M")))
     Data_ = Data_.withColumn("Fecha_Hoy", lit(now.strftime("%d/%m/%Y")))
 
-    print("Tercer contador:", Data_.count())
+    print("🔢 Third count:", Data_.count())
     
     Data_ = Data_.dropDuplicates(["Cruce_Cuentas"])
 
-    print("Cuarto contador:", Data_.count())
-
-    # Data_ = Data_.select("identificacion", "cuenta", "cuenta2", "fecha_asignacion", "marca", \
-    #                      "origen", f"{Price_Col}", "customer_type_id", "Form_Moneda", "nombrecompleto", \
-    #                     "Rango", "referencia", "Dato_Contacto", "Hora_Envio", "Hora_Real", \
-    #                     "Fecha_Hoy", "marca2", "descuento", "DEUDA_REAL", "fecha_vencimiento", "PRODUCTO", \
-    #                     "fechapromesa", "tipo_pago", "mejorperfil_mes")
+    print("🔢 Fourth count:", Data_.count())
     
     Data_ = Data_.withColumn("now", current_date())
     Data_ = Data_.withColumn("dias_transcurridos", datediff(col("now"), col("fecha_ingreso")))
@@ -211,6 +256,8 @@ def conversion_process (Data_Frame, output_directory, partitions, Contacts_Min):
                              .when(length(col("Name_3")) > 2, col("Name_3"))
                              .otherwise(col("Name_1")))
 
+    Data_ = Data_.withColumn("NOMBRE CORTO", regexp_replace(col("NOMBRE CORTO"), "[^A-Z& ]", ""))
+    
     Data_ = Renamed_Column(Data_)
     
     return Data_
@@ -236,6 +283,6 @@ def Function_Filter(RDD, Contacts_Min):
         Data_F = Data_F.filter(col("Dato_Contacto") <= 6089999999)
         RDD = Data_C.union(Data_F)
     
-    print("Quinto contador:", RDD.count())
+    print("🔢 Fifth count:", RDD.count())
     
     return RDD
