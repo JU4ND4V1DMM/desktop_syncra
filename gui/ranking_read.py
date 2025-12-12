@@ -134,8 +134,10 @@ def process_ranking_files(input_folder, output_file):
                               "GESTIONAR" if x == "PENDIENTEMOVIL" else
                               "NO GESTIONAR" if x == "PAGO TOTAL NO RXMOVIL" else
                               "NO GESTIONAR" if x == "PAGO TOTAL NO_RXMOVIL" else
+                              "NO GESTIONAR" if x == "PAGO TOTAL NO-RX" else
                               "NO GESTIONAR" if x == "PAGO TOTAL SI RXMOVIL" else
                               "NO GESTIONAR" if x == "PAGO TOTAL SI_RXMOVIL" else
+                              "NO GESTIONAR" if x == "PAGO TOTAL SI-RX" else
                               "GESTIONAR" if x == "SIMOVIL" else
                               "GESTION RECAUDO" if "GESTION RECAUDO" in x else
                               "GESTION RECAUDO" if "GESTION_RECAUDO" in x else
