@@ -11,7 +11,7 @@ spark = get_spark_session()
 
 sqlContext = SQLContext(spark)
 
-### Proceso con todas las funciones desarrolladas
+### Proceso con todas las funciones desarrolladas 
 def function_complete_telematics(path, output_directory, partitions, process_resource):
     
     print(f"Processing Telematics Crediveci with resource: {process_resource}")
@@ -165,7 +165,7 @@ def conversion_process (Data_Frame, output_directory, partitions, Contacts_Min):
     Data_ = Data_.withColumn("dias_transcurridos", datediff(col("now"), col("fecha_ingreso")))
 
     Data_ = Data_.withColumn("NOMBRE CORTO", upper(col("titular")))
-
+    Data_ = change_name_column(Data_, "NOMBRE CORTO")
     Data_ = Data_.withColumn("NOMBRE CORTO", split(col("NOMBRE CORTO"), " "))
     
     print(Data_["NOMBRE CORTO"].dtype)
@@ -205,3 +205,36 @@ def Function_Filter(RDD, Contacts_Min):
         RDD = Data_C.union(Data_F)
     
     return RDD
+
+def change_name_column (Data_, Column):
+
+    Data_ = Data_.withColumn(Column, upper(col(Column)))
+
+    character_list_N = ["\\ÃƒÂ‘", "\\Ã‚Â¦", "\\Ã‘", "Ñ", "ÃƒÂ‘", "Ã‚Â¦", "Ã‘"]
+    
+    for character in character_list_N:
+        Data_ = Data_.withColumn(Column, regexp_replace(col(Column), character, "NNNNN"))
+    
+    Data_ = Data_.withColumn(Column, regexp_replace(col(Column), "NNNNN", "N"))
+    Data_ = Data_.withColumn(Column, regexp_replace(col(Column), "Ã‡", "A"))
+    Data_ = Data_.withColumn(Column, regexp_replace(col(Column), "ÃƒÂ", "I"))
+
+
+    character_list = ["SR/SRA", "SR./SRA.", "SR/SRA.","SR.", "SRA.", "SR(A).","SR ", "SRA ", "SR(A)",\
+                    "\\.",'#', '$', '/','<', '>', "\\*", "SEÑORES ","SEÑOR(A) ","SEÑOR ","SEÑORA ", "SENORES ",\
+                    "SENOR(A) ","SENOR ","SENORA ", "¡", "!", "\\?" "¿", "_", "-", "}", "\\{", "\\+", "0 ", "1 ", "2 ", "3 ",\
+                     "4 ", "5 ", "6 ", "7 ","8 ", "9 ", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "  "]
+
+    for character in character_list:
+        Data_ = Data_.withColumn(Column, regexp_replace(col(Column), character, ""))
+    
+    Data_ = Data_.withColumn(Column, regexp_replace(Column, "[^A-Z& ]", ""))
+
+    character_list = ["SEORES ","SEORA ","SEOR ","SEORA "]
+
+    for character in character_list:
+        Data_ = Data_.withColumn(Column, regexp_replace(col(Column), character, ""))
+
+    Data_ = Data_.withColumn(Column,regexp_replace(col(Column), r'^(A\s+| )+', ''))
+        
+    return Data_
