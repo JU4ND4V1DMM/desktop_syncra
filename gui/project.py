@@ -3,22 +3,22 @@ from PyQt6.QtCore import QDate
 from PyQt6 import QtWidgets, uic
 from PyQt6.QtWidgets import QMessageBox
 import modules.fragment_dataBase
-import modules.telematics_crediveci
-import modules.telematics_gmfinancial
-import modules.telematics_puntored
-import modules.telematics_yadinero
-import modules.telematics_habi
-import modules.telematics_payjoy
+import modules.telematic.telematics_crediveci
+import modules.telematic.telematics_gmfinancial
+import modules.telematic.telematics_puntored
+import modules.telematic.telematics_yadinero
+import modules.telematic.telematics_habi
+import modules.telematic.telematics_payjoy
 import web.download_saem_reports
-import modules.bot_process
-import modules.email_process
-import modules.sms_process
-import modules.ivr_process
-import modules.phone_order
+import modules.telematic.claro.bot_process
+import modules.telematic.claro.email_process
+import modules.telematic.claro.sms_process
+import modules.telematic.claro.ivr_process
+import modules.telematic.claro.phone_order
 import modules.fragment_dataBase
 import modules.tmo_trial
 import modules.exclusions
-import modules.exclusions_file_claro
+import modules.telematic.claro.exclusions_file_claro
 import modules.task_web
 
 class Process_Data(QtWidgets.QMainWindow):
@@ -86,11 +86,11 @@ class Process_Data(QtWidgets.QMainWindow):
             sheets_str = self.process_data.label_Total_Registers_2.text()
             sheets = int(sheets_str.split()[0])
             
-            if sheets < 3:
+            if sheets < 4:
                 modules.exclusions.process_xlsx_file(file, root)
                 print("Normal Exclusions")
             elif sheets > 2:
-                modules.exclusions_file_claro.process_xlsx_file(file, root)
+                modules.telematic.claro.exclusions_file_claro.process_xlsx_file(file, root)
                 print("High Exclusions")
 
             Mbox_In_Process = QMessageBox()
@@ -118,7 +118,7 @@ class Process_Data(QtWidgets.QMainWindow):
             Mbox_In_Process.setText("Por favor espere la ventana de confirmacion, mientras se procesa el archivo.")
             Mbox_In_Process.exec()
 
-            modules.phone_order.Function_Complete(file, root, partitions)
+            modules.telematic.claro.phone_order.Function_Complete(file, root, partitions)
 
             Mbox_In_Process = QMessageBox()
             Mbox_In_Process.setWindowTitle("")
@@ -771,7 +771,7 @@ class Process_Data(QtWidgets.QMainWindow):
                 Mbox_In_Process.setText("Por favor espere la ventana de confirmacion, mientras se procesa el archivo.")
                 Mbox_In_Process.exec()
 
-                modules.email_process.Function_Complete(file, root, partitions, Type_Clients, Benefits_Pash, \
+                modules.telematic.claro.email_process.Function_Complete(file, root, partitions, Type_Clients, Benefits_Pash, \
                                                       Contact_Pash, List_Credit, value_min, value_max,\
                                                         widget_filter)
                 
@@ -807,7 +807,7 @@ class Process_Data(QtWidgets.QMainWindow):
                 Mbox_In_Process.setText("Por favor espere la ventana de confirmacion, mientras se procesa el archivo.")
                 Mbox_In_Process.exec()
 
-                modules.sms_process.Function_Complete(file, root, partitions, Type_Clients, Benefits_Pash, \
+                modules.telematic.claro.sms_process.Function_Complete(file, root, partitions, Type_Clients, Benefits_Pash, \
                                                       Contact_Pash, List_Credit, value_min, value_max,\
                                                         widget_filter)
                 
@@ -923,7 +923,7 @@ class Process_Data(QtWidgets.QMainWindow):
                     Mbox_In_Process.setText("Por favor espere la ventana de confirmacion, mientras se procesa el archivo.")
                     Mbox_In_Process.exec()
 
-                    modules.bot_process.Function_Complete(file, root, partitions, brands, origins, date, benefits, contact, \
+                    modules.telematic.claro.bot_process.Function_Complete(file, root, partitions, brands, origins, date, benefits, contact, \
                                                         value_min, value_max, widget_filter)
                     Mbox_In_Process = QMessageBox()
                     Mbox_In_Process.setWindowTitle("")
@@ -939,7 +939,7 @@ class Process_Data(QtWidgets.QMainWindow):
                     Mbox_In_Process.setText("Por favor espere la ventana de confirmacion, mientras se procesa el archivo.")
                     Mbox_In_Process.exec()
 
-                    modules.email_process.Function_Complete(file, root, partitions, brands, origins, date, benefits, \
+                    modules.telematic.claro.email_process.Function_Complete(file, root, partitions, brands, origins, date, benefits, \
                                                             value_min, value_max, widget_filter)
                     
                     Mbox_In_Process = QMessageBox()
@@ -956,7 +956,7 @@ class Process_Data(QtWidgets.QMainWindow):
                     Mbox_In_Process.setText("Por favor espere la ventana de confirmacion, mientras se procesa el archivo.")
                     Mbox_In_Process.exec()
 
-                    modules.ivr_process.Function_Complete(file, root, partitions, brands, origins, date, today_IVR, benefits, contact, \
+                    modules.telematic.claro.ivr_process.Function_Complete(file, root, partitions, brands, origins, date, today_IVR, benefits, contact, \
                                                         value_min, value_max, widget_filter)
                     
                     Mbox_In_Process = QMessageBox()
@@ -973,7 +973,7 @@ class Process_Data(QtWidgets.QMainWindow):
                     Mbox_In_Process.setText("Por favor espere la ventana de confirmacion, mientras se procesa el archivo.")
                     Mbox_In_Process.exec()
 
-                    modules.sms_process.Function_Complete(file, root, partitions, brands, origins, date, benefits, contact, \
+                    modules.telematic.claro.sms_process.Function_Complete(file, root, partitions, brands, origins, date, benefits, contact, \
                                                         value_min, value_max, widget_filter)
                     
                     Mbox_In_Process = QMessageBox()
@@ -1017,7 +1017,7 @@ class Process_Data(QtWidgets.QMainWindow):
                     Mbox_In_Process.setText("Por favor espere la ventana de confirmacion, mientras se procesa el archivo.")
                     Mbox_In_Process.exec()
 
-                    modules.telematics_puntored.function_complete_telematics(file, root, partitions, process_resource)
+                    modules.telematic.telematics_puntored.function_complete_telematics(file, root, partitions, process_resource)
                     
                     Mbox_In_Process = QMessageBox()
                     Mbox_In_Process.setWindowTitle("")
@@ -1033,7 +1033,7 @@ class Process_Data(QtWidgets.QMainWindow):
                     Mbox_In_Process.setText("Por favor espere la ventana de confirmacion, mientras se procesa el archivo.")
                     Mbox_In_Process.exec()
 
-                    modules.telematics_crediveci.function_complete_telematics(file, root, partitions, process_resource)
+                    modules.telematic.telematics_crediveci.function_complete_telematics(file, root, partitions, process_resource)
                     
                     Mbox_In_Process = QMessageBox()
                     Mbox_In_Process.setWindowTitle("")
@@ -1049,7 +1049,7 @@ class Process_Data(QtWidgets.QMainWindow):
                     Mbox_In_Process.setText("Por favor espere la ventana de confirmacion, mientras se procesa el archivo.")
                     Mbox_In_Process.exec()
 
-                    modules.telematics_gmfinancial.function_complete_telematics(file, root, partitions, process_resource)
+                    modules.telematic.telematics_gmfinancial.function_complete_telematics(file, root, partitions, process_resource)
                     
                     Mbox_In_Process = QMessageBox()
                     Mbox_In_Process.setWindowTitle("")
@@ -1065,7 +1065,7 @@ class Process_Data(QtWidgets.QMainWindow):
                     Mbox_In_Process.setText("Por favor espere la ventana de confirmacion, mientras se procesa el archivo.")
                     Mbox_In_Process.exec()
 
-                    modules.telematics_yadinero.function_complete_telematics(file, root, partitions, process_resource)
+                    modules.telematic.telematics_yadinero.function_complete_telematics(file, root, partitions, process_resource)
                     
                     Mbox_In_Process = QMessageBox()
                     Mbox_In_Process.setWindowTitle("")
@@ -1081,7 +1081,7 @@ class Process_Data(QtWidgets.QMainWindow):
                     Mbox_In_Process.setText("Por favor espere la ventana de confirmacion, mientras se procesa el archivo.")
                     Mbox_In_Process.exec()
 
-                    modules.telematics_habi.function_complete_telematics(file, root, partitions, process_resource)
+                    modules.telematic.telematics_habi.function_complete_telematics(file, root, partitions, process_resource)
 
                     Mbox_In_Process = QMessageBox()
                     Mbox_In_Process.setWindowTitle("")
@@ -1097,7 +1097,7 @@ class Process_Data(QtWidgets.QMainWindow):
                     Mbox_In_Process.setText("Por favor espere la ventana de confirmacion, mientras se procesa el archivo.")
                     Mbox_In_Process.exec()
 
-                    modules.telematics_payjoy.function_complete_telematics(file, root, partitions, process_resource)
+                    modules.telematic.telematics_payjoy.function_complete_telematics(file, root, partitions, process_resource)
 
                     Mbox_In_Process = QMessageBox()
                     Mbox_In_Process.setWindowTitle("")

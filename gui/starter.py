@@ -2,10 +2,15 @@ import cpuinfo
 import bigdata.demos_ai
 import bigdata.touch_ai
 import bigdata.union_datalakes_claro
-import gui.batch_cruice
+from gui.reports import report_batch_count
+from gui.searching import cruice_demographic, efecty_blaster
+from gui.apis import batch_api_claro, batch_api_others_campaigns
+import gui.reports.batch_cruice
+import gui.reports.report_batch_campaings
+from gui.searching import cruice_report_claro
 import gui.union_like_powershell
 import gui.adition_demographic
-import gui.read_files_wisebot
+import gui.reports.read_files_wisebot
 from gui.dynamic_thread import DynamicThread
 import random
 import webbrowser
@@ -14,34 +19,34 @@ import shutil
 import cloud.insert_firebase
 import cloud.conversion_csv_to_json
 import cloud.conversion_csv_to_parquet
-import gui.insignias
-import gui.payments
-import gui.ranking_read
-import gui.search_data
-import gui.search_demograhic
-import gui.transform_schema
+import gui.files_process.payments
+import gui.reports.daily_payjoy
+import gui.reports.report_inactive_claro
+import gui.reports.report_cleaner_demos_payjoy
+import gui.files_process.ranking_read
+import gui.searching.search_data
+import gui.searching.search_demograhic
+import gui.reports.transform_schema
 import web.download_saem_reports
-import gui.payments_not_applied
-import gui.no_managment
-import gui.read_files_sms
-import gui.read_task_web
-import gui.union_bot
-import gui.price_telematic
-import gui.structure_files
-import gui.union_demo
-import gui.conversion_csv
+import gui.files_process.payments_not_applied
+import gui.files_process.no_managment
+import gui.reports.read_files_sms
+import gui.reports.read_task_web
+import gui.reports.union_bot
+import gui.files_process.price_telematic
+import gui.reports.structure_files
+import gui.reports.union_demo
+import gui.conversion.conversion_csv
+import gui.conversion.sell_pdfs
 import gui.union_files
-import skills.count_ivr
-import skills.count_sms
-import skills.count_bot
-import skills.count_email
+import skills.count_telematic
 import utils.IVR_Change_Audios
 import utils.IVR_Downloads_List
 import utils.IVR_Clean_Lists
 import utils.IVR_Upload
 from gui.project import Process_Data
-from gui.base_overview import Charge_DB
-import gui.search_data
+from gui.files_process.base_overview import Charge_DB
+import gui.searching.search_data
 from gui.upload import Process_Uploaded
 import gui.web_process
 import bigdata.data_ai
@@ -163,19 +168,26 @@ class Init_APP():
             processor_name = info['brand_raw']
             self.process_data.label_3.setText(f"{processor_name}")
 
-            try:
-                _, _, free_d = shutil.disk_usage("C:/")
-                free_gb_d = free_d // (1024**3)
-                self.process_data.lcdNumber_3.display(free_gb_d)
-            except FileNotFoundError:
-                self.process_data.lcdNumber_3.display(0)
-                
-            try:
-                _, _, free_d = shutil.disk_usage("D:/")
-                free_gb_d = free_d // (1024**3)
-                self.process_data.lcdNumber_2.display(free_gb_d)
-            except FileNotFoundError:
-                self.process_data.lcdNumber_2.display(0)
+            def get_disk_space_psutil(drive_path):
+                try:
+                    if drive_path.endswith('/') or drive_path.endswith('\\'):
+                        drive_path = drive_path.rstrip('/\\')
+                    
+                    for partition in psutil.disk_partitions():
+                        if partition.device.startswith(drive_path) or drive_path.startswith(partition.device):
+                            usage = psutil.disk_usage(partition.mountpoint)
+                            free_gb = usage.free // (1024**3)
+                            return free_gb
+                    return 0
+                except Exception as e:
+                    print(f"💥 Error accediendo a {drive_path}: {e}")
+                    return 0
+            
+            free_c = get_disk_space_psutil("C:")
+            self.process_data.lcdNumber_3.display(free_c)
+            
+            free_d = get_disk_space_psutil("D:")
+            self.process_data.lcdNumber_2.display(free_d)
     
             self.exec_process()
             
@@ -228,6 +240,8 @@ class Init_APP():
         self.process_data.pushButton_11.clicked.connect(self.folder_sms_claro_read)
         self.process_data.commandLinkButton_21.clicked.connect(self.folder_validation)
         
+        self.process_data.pushButton_31.clicked.connect(self.folder_report_daily_payjoy)
+
         self.process_data.commandLinkButton_17.clicked.connect(self.folder_files_process_ng)
         self.process_data.commandLinkButton_16.clicked.connect(self.folder_files_process_psa)
         self.process_data.commandLinkButton_18.clicked.connect(self.folder_files_process_pg)
@@ -240,7 +254,6 @@ class Init_APP():
         self.process_data.pushButton_22.clicked.connect(self.folder_files_cruice_batch_claro)
         
         self.process_data.commandLinkButton_20.clicked.connect(self.folder_union_excel)
-        self.process_data.commandLinkButton_22.clicked.connect(self.folder_union_insignias)
         self.process_data.commandLinkButton_23.clicked.connect(self.read_folder_resources)
         
         self.process_data.commandLinkButton_27.clicked.connect(self.exec_claro_structure_df)
@@ -256,6 +269,17 @@ class Init_APP():
         self.process_data.pushButton_6.clicked.connect(self.copy_folders_root)
         self.process_data.pushButton_8.clicked.connect(self.copy_code_documentation)
         self.process_data.pushButton_23.clicked.connect(self.copy_batch_folder_campaign_claro)
+        self.process_data.pushButton_32.clicked.connect(self.copy_folder_report_payjoy)
+        self.process_data.pushButton_33.clicked.connect(self.exec_claro_blaster)
+        self.process_data.pushButton_34.clicked.connect(self.exec_batch_claro)
+        self.process_data.pushButton_35.clicked.connect(self.exec_report_batch_claro)
+        self.process_data.pushButton_40.clicked.connect(self.exec_report_count_blaster)
+        self.process_data.pushButton_41.clicked.connect(self.exec_report_demos_payjoy)
+        self.process_data.pushButton_42.clicked.connect(self.exec_report_inactive_accounts_claro)
+        self.process_data.pushButton_38.clicked.connect(self.exec_batch_otras_campanas)
+        self.process_data.pushButton_39.clicked.connect(self.sell_pdfs_folder)
+        self.process_data.pushButton_36.clicked.connect(self.exec_report_count_batch_claro)
+        self.process_data.pushButton_37.clicked.connect(self.exec_report_cruice_demographic_claro)
         self.process_data.pushButton_14.clicked.connect(self.copy_schema_campaings)
         self.process_data.pushButton_7.clicked.connect(self.copy_schema_masiv)
 
@@ -273,6 +297,7 @@ class Init_APP():
         
         self.process_data.commandLinkButton_31.clicked.connect(lambda: self.open_chrome_with_url('https://recuperasas10-my.sharepoint.com/:f:/g/personal/coordinador_operativo2_recuperasas_com/Erd9Zszk2gBMpOY-HSs_4EwBhYQGgJfmQCN8NTgOlPhF8A?e=oXfjnt'))
         self.process_data.commandLinkButton_32.clicked.connect(lambda: self.open_chrome_with_url('https://recuperasas10.sharepoint.com/sites/ao2023/Shared%20Documents/Forms/AllItems.aspx?viewid=3b190181%2D2dd9%2D4237%2D988e%2Dcb92220f7829&p=true&ga=1'))
+        self.process_data.commandLinkButton_32.clicked.connect(lambda: self.open_chrome_with_url('https://recuperasas10-my.sharepoint.com/personal/coordinador_desarrollo2_recuperasas_com/_layouts/15/onedrive.aspx?e=5%3A0ca47b9dd34c48e494f0a7edd910a7ac&sharingv2=true&fromShare=true&at=9&CID=0ee8a459%2D9c1f%2D4649%2D9240%2D769e4ffb4f6c&id=%2Fpersonal%2Fcoordinador%5Fdesarrollo2%5Frecuperasas%5Fcom%2FDocuments%2FBackups%20Recupera%20Lumina%20Systems&FolderCTID=0x012000B9E9DC00D74D0F479F67D79DD8014A90&view=0'))
 
         self.process_data.pushButton_Process_8.clicked.connect(self.schedule_shutdown)
 
@@ -391,7 +416,7 @@ class Init_APP():
             Mbox_In_Process.exec()
             partitions = 1
             
-            gui.search_demograhic.search_demographic_claro(self.file_path_RPA, self.folder_path, partitions, self.process_data)
+            gui.searching.search_demograhic.search_demographic_claro(self.file_path_RPA, self.folder_path, partitions, self.process_data)
 
             Mbox_In_Process = QMessageBox()
             Mbox_In_Process.setWindowTitle("Estado de Consulta") 
@@ -621,23 +646,40 @@ class Init_APP():
             Mbox_File_Error.exec()
             
     def select_file_CAM(self):
-        self.file_path_CAM = QFileDialog.getOpenFileName()
-        self.file_path_CAM = str(self.file_path_CAM[0])
-        if self.file_path_CAM:
+        file_filter = "Archivos de datos (*.csv *.parquet)"
+        
+        path, _ = QFileDialog.getOpenFileName(
+            None, 
+            "Seleccionar archivo", 
+            "", 
+            file_filter
+        )
+        
+        if path:
+            self.file_path_CAM = path
             
-            if not self.file_path_CAM.endswith('.csv'):
-                Mbox_File_Error = QMessageBox()
-                Mbox_File_Error.setWindowTitle("Error de procesamiento")
-                Mbox_File_Error.setIcon(QMessageBox.Icon.Warning)
-                Mbox_File_Error.setText("Debe seleccionar un archivo de valores con formato CSV.")
-                Mbox_File_Error.exec()
+            # 2. Validación de extensión mejorada
+            is_valid = path.lower().endswith(('.csv', '.parquet'))
             
-            else:
+            if not is_valid:
+                mbox = QMessageBox(self)
+                mbox.setWindowTitle("Error de formato")
+                mbox.setIcon(QMessageBox.Icon.Warning)
+                mbox.setText("Formato no compatible. Seleccione un archivo CSV o Parquet.")
+                mbox.exec()
+                return 
+
+            try:
                 self.row_count_CAM = count_csv_rows(self.file_path_CAM)
+                
                 if self.row_count_CAM is not None:
-                    self.row_count_CAM = "{:,}".format(self.row_count_CAM)
-                    self.process_data.label_Total_Registers_4.setText(f"{self.row_count_CAM}")
+                    formatted_count = "{:,}".format(int(self.row_count_CAM))
+                    self.process_data.label_Total_Registers_4.setText(f"{formatted_count}")
+                    
                     self.bd_process_start()
+                    
+            except Exception as e:
+                print(f"Error procesando el archivo: {e}")
 
     def select_file_IVR(self):
         self.file_path_IVR = QFileDialog.getOpenFileName()
@@ -988,6 +1030,18 @@ class Init_APP():
         Mbox_In_Process.setIcon(QMessageBox.Icon.Information)
         Mbox_In_Process.setText("Carpetas para cruce exportadas en el directorio de Descargas.")
         Mbox_In_Process.exec()
+    
+    def copy_folder_report_payjoy(self):
+
+        output_directory = self.folder_path
+
+        self.function_copy_folders(output_directory, "Daily Report Payjoy")
+
+        Mbox_In_Process = QMessageBox()
+        Mbox_In_Process.setWindowTitle("")
+        Mbox_In_Process.setIcon(QMessageBox.Icon.Information)
+        Mbox_In_Process.setText("Carpetas para cruce exportadas en el directorio de Descargas.")
+        Mbox_In_Process.exec()
         
     def copy_schema_campaings(self):
 
@@ -1134,7 +1188,7 @@ class Init_APP():
             Mbox_In_Process.setText("Por favor espere la ventana de confirmación, mientras se procesa la carpeta.")
             Mbox_In_Process.exec()
             
-            self.Base = gui.read_task_web.function_complete_task_WEB(self.folder_path_IVR, self.folder_path, self.partitions_FOLDER)
+            self.Base = gui.reports.read_task_web.function_complete_task_WEB(self.folder_path_IVR, self.folder_path, self.partitions_FOLDER)
 
             Mbox_In_Process = QMessageBox() 
             Mbox_In_Process.setWindowTitle("")
@@ -1164,7 +1218,7 @@ class Init_APP():
             Mbox_In_Process.setText("Por favor espere la ventana de confirmación, mientras se procesa la carpeta.")
             Mbox_In_Process.exec()
             
-            self.Base = gui.union_demo.Union_Files_Demo(self.folder_path_IVR, self.folder_path, self.partitions_FOLDER)
+            self.Base = gui.reports.union_demo.Union_Files_Demo(self.folder_path_IVR, self.folder_path, self.partitions_FOLDER)
 
             Mbox_In_Process = QMessageBox() 
             Mbox_In_Process.setWindowTitle("")
@@ -1209,36 +1263,6 @@ class Init_APP():
             Mbox_File_Error.setText("Debe seleccionar una ruta con los archivos a consolidar.")
             Mbox_File_Error.exec()
             
-    def folder_union_insignias(self):
-
-        type_process = "folder"
-        
-        self.validation_data_folders(type_process)
-        self.digit_partitions_FOLDER()
-
-        if self.folder_path_IVR != None:
-
-            Mbox_In_Process = QMessageBox()
-            Mbox_In_Process.setWindowTitle("Procesando")
-            Mbox_In_Process.setIcon(QMessageBox.Icon.Information)
-            Mbox_In_Process.setText("Por favor espere la ventana de confirmación, mientras se procesa la carpeta.")
-            Mbox_In_Process.exec()
-            
-            gui.insignias.read_files_insignias(self.folder_path_IVR, self.folder_path)
-
-            Mbox_In_Process = QMessageBox() 
-            Mbox_In_Process.setWindowTitle("")
-            Mbox_In_Process.setIcon(QMessageBox.Icon.Information)
-            Mbox_In_Process.setText("Insignias generadas exitosamente.")
-            Mbox_In_Process.exec()
-        
-        else:
-            Mbox_File_Error = QMessageBox()
-            Mbox_File_Error.setWindowTitle("Error de procesamiento")
-            Mbox_File_Error.setIcon(QMessageBox.Icon.Warning)
-            Mbox_File_Error.setText("Debe seleccionar una ruta con los archivos a consolidar.")
-            Mbox_File_Error.exec()
-
     def folder_bot_ipcom(self):
 
         type_process = "folder"
@@ -1254,7 +1278,7 @@ class Init_APP():
             Mbox_In_Process.setText("Por favor espere la ventana de confirmación, mientras se procesa la carpeta.")
             Mbox_In_Process.exec()
             
-            self.Base = gui.union_bot.Union_Files_BOT(self.folder_path_IVR, self.folder_path, self.partitions_FOLDER)
+            self.Base = gui.reports.union_bot.Union_Files_BOT(self.folder_path_IVR, self.folder_path, self.partitions_FOLDER)
 
             Mbox_In_Process = QMessageBox() 
             Mbox_In_Process.setWindowTitle("")
@@ -1284,7 +1308,7 @@ class Init_APP():
             Mbox_In_Process.setText("Por favor espere la ventana de confirmación, mientras se procesa la carpeta.")
             Mbox_In_Process.exec()
             
-            self.Base = gui.read_files_sms.process_mora_by_folder(self.folder_path_IVR, self.folder_path, self.partitions_FOLDER)
+            self.Base = gui.reports.read_files_sms.process_mora_by_folder(self.folder_path_IVR, self.folder_path, self.partitions_FOLDER)
 
             Mbox_In_Process = QMessageBox() 
             Mbox_In_Process.setWindowTitle("")
@@ -1314,7 +1338,7 @@ class Init_APP():
             Mbox_In_Process.setText("Por favor espere la ventana de confirmación, mientras se procesa la carpeta.")
             Mbox_In_Process.exec()
             
-            self.Base = gui.structure_files.details_files(self.folder_path_IVR, self.folder_path)
+            self.Base = gui.reports.structure_files.details_files(self.folder_path_IVR, self.folder_path)
 
             Mbox_In_Process = QMessageBox() 
             Mbox_In_Process.setWindowTitle("")
@@ -1327,6 +1351,36 @@ class Init_APP():
             Mbox_File_Error.setWindowTitle("Error de procesamiento")
             Mbox_File_Error.setIcon(QMessageBox.Icon.Warning)
             Mbox_File_Error.setText("Debe seleccionar una ruta con los archivos a validar.")
+            Mbox_File_Error.exec()
+    
+    def folder_report_daily_payjoy(self):
+
+        type_process = "folder"
+        
+        self.validation_data_folders(type_process)
+        self.digit_partitions_FOLDER()
+
+        if self.folder_path_IVR != None:
+
+            Mbox_In_Process = QMessageBox()
+            Mbox_In_Process.setWindowTitle("Procesando")
+            Mbox_In_Process.setIcon(QMessageBox.Icon.Information)
+            Mbox_In_Process.setText("Por favor espere la ventana de confirmación, mientras se procesa el daily report.")
+            Mbox_In_Process.exec()
+            
+            self.Base = gui.reports.daily_payjoy.generate_report(self.folder_path_IVR, self.folder_path)
+            
+            Mbox_In_Process = QMessageBox() 
+            Mbox_In_Process.setWindowTitle("")
+            Mbox_In_Process.setIcon(QMessageBox.Icon.Information)
+            Mbox_In_Process.setText("Procesamiento del daily report ejecutado exitosamente.")
+            Mbox_In_Process.exec()
+        
+        else:
+            Mbox_File_Error = QMessageBox()
+            Mbox_File_Error.setWindowTitle("Error de procesamiento")
+            Mbox_File_Error.setIcon(QMessageBox.Icon.Warning)
+            Mbox_File_Error.setText("Debe seleccionar una ruta con los archivos a procesar.")
             Mbox_File_Error.exec()
     
     def folder_files_process_ng(self):
@@ -1344,7 +1398,7 @@ class Init_APP():
             Mbox_In_Process.setText("Por favor espere la ventana de confirmación, mientras se procesa la carpeta.")
             Mbox_In_Process.exec()
             
-            self.Base = gui.no_managment.transform_no_management(self.folder_path_IVR, self.folder_path)
+            self.Base = gui.files_process.no_managment.transform_no_management(self.folder_path_IVR, self.folder_path)
             
             Mbox_In_Process = QMessageBox() 
             Mbox_In_Process.setWindowTitle("")
@@ -1374,7 +1428,7 @@ class Init_APP():
             Mbox_In_Process.setText("Por favor espere la ventana de confirmación, mientras se procesa la carpeta.")
             Mbox_In_Process.exec()
             
-            self.Base = gui.payments_not_applied.transform_payments_without_applied(self.folder_path_IVR, self.folder_path)
+            self.Base = gui.files_process.payments_not_applied.transform_payments_without_applied(self.folder_path_IVR, self.folder_path)
             
             Mbox_In_Process = QMessageBox() 
             Mbox_In_Process.setWindowTitle("")
@@ -1404,7 +1458,7 @@ class Init_APP():
             Mbox_In_Process.setText("Por favor espere la ventana de confirmación, mientras se cruza la informacion.")
             Mbox_In_Process.exec()
             
-            self.Base = gui.batch_cruice.cruice_batch_campaign_claro(self.folder_path_IVR, self.folder_path, self.partitions_FOLDER)
+            self.Base = gui.reports.batch_cruice.cross_batch_campaign_claro(self.folder_path_IVR, self.folder_path, self.partitions_FOLDER)
             
             Mbox_In_Process = QMessageBox() 
             Mbox_In_Process.setWindowTitle("")
@@ -1434,7 +1488,7 @@ class Init_APP():
             Mbox_In_Process.setText("Por favor espere la ventana de confirmación, mientras se procesa la carpeta.")
             Mbox_In_Process.exec()
             
-            self.Base = gui.payments.unify_payments(self.folder_path_IVR, self.folder_path)
+            self.Base = gui.files_process.payments.unify_payments(self.folder_path_IVR, self.folder_path)
             
             Mbox_In_Process = QMessageBox() 
             Mbox_In_Process.setWindowTitle("")
@@ -1464,7 +1518,7 @@ class Init_APP():
             Mbox_In_Process.setText("Por favor espere la ventana de confirmación, mientras se procesa la carpeta.")
             Mbox_In_Process.exec()
             
-            self.Base = gui.transform_schema.transform_csv_to_excel_dashboard(self.folder_path_IVR, self.folder_path)
+            self.Base = gui.reports.transform_schema.transform_csv_to_excel_dashboard(self.folder_path_IVR, self.folder_path)
             
             Mbox_In_Process = QMessageBox() 
             Mbox_In_Process.setWindowTitle("")
@@ -1494,7 +1548,7 @@ class Init_APP():
             Mbox_In_Process.setText("Por favor espere la ventana de confirmación, mientras se procesa la carpeta.")
             Mbox_In_Process.exec()
             
-            self.Base = gui.read_files_wisebot.process_excel_files(self.folder_path_IVR, self.folder_path)
+            self.Base = gui.reports.read_files_wisebot.process_excel_files(self.folder_path_IVR, self.folder_path)
             
             Mbox_In_Process = QMessageBox() 
             Mbox_In_Process.setWindowTitle("")
@@ -1524,7 +1578,7 @@ class Init_APP():
             Mbox_In_Process.setText("Por favor espere la ventana de confirmación, mientras se procesa la carpeta.")
             Mbox_In_Process.exec()
             
-            self.Base = gui.price_telematic.process_excel_files_in_folder(self.folder_path_IVR, self.folder_path)
+            self.Base = gui.files_process.price_telematic.process_excel_files_in_folder(self.folder_path_IVR, self.folder_path)
             
             Mbox_In_Process = QMessageBox() 
             Mbox_In_Process.setWindowTitle("")
@@ -1554,7 +1608,7 @@ class Init_APP():
             Mbox_In_Process.setText("Por favor espere la ventana de confirmación, mientras se procesa la carpeta.")
             Mbox_In_Process.exec()
             
-            self.Base = gui.conversion_csv.convert_xlsx_to_csv(self.folder_path_IVR)
+            self.Base = gui.conversion.conversion_csv.convert_xlsx_to_csv(self.folder_path_IVR)
             
             Mbox_In_Process = QMessageBox() 
             Mbox_In_Process.setWindowTitle("")
@@ -1647,7 +1701,7 @@ class Init_APP():
     
             Search_IVR = list_to_process_IVR[0]
             
-            self.Base = gui.search_data.search_values_in_files(self.folder_path_IVR, self.folder_path, Search_IVR, self.process_data)
+            self.Base = gui.searching.search_data.search_values_in_files(self.folder_path_IVR, self.folder_path, Search_IVR, self.process_data)
 
             Mbox_In_Process = QMessageBox()
             Mbox_In_Process.setWindowTitle("")
@@ -1677,7 +1731,7 @@ class Init_APP():
             Mbox_In_Process.setText("Por favor espere la ventana de confirmación, mientras se procesa la carpeta.")
             Mbox_In_Process.exec()
             
-            self.Base = gui.ranking_read.process_ranking_files(self.folder_path_IVR, self.folder_path)
+            self.Base = gui.files_process.ranking_read.process_ranking_files(self.folder_path_IVR, self.folder_path)
 
             Mbox_In_Process = QMessageBox()
             Mbox_In_Process.setWindowTitle("")
@@ -1908,7 +1962,6 @@ class Init_APP():
         self.partitions_FOLDER = None
         self.digit_partitions_FOLDER()
 
-        Resource_folder = self.process_data.comboBox_Selected_Process_2.currentText()
         
         if self.folder_path_IVR is None:
             
@@ -1917,17 +1970,6 @@ class Init_APP():
             Mbox_File_Error.setIcon(QMessageBox.Icon.Warning)
             Mbox_File_Error.setText("Debe seleccionar una ruta con los archivos a consolidar.")
             Mbox_File_Error.exec()
-            
-        elif "--- Seleccione opción" == Resource_folder:
-            Mbox_Incomplete = QMessageBox()
-            Mbox_Incomplete.setWindowTitle("Error de procesamiento")
-            Mbox_Incomplete.setIcon(QMessageBox.Icon.Warning)
-            Mbox_Incomplete.setText("Debe elegir el tipo de carpeta del recurso a leer o seleccionar todas.")
-            Mbox_Incomplete.exec()
-            self.process_data.comboBox_Selected_Process_2.setFocus()
-
-        else:
-            self.list_Resources = [Resource_folder]
     
     def exec_claro_structure_df(self):
 
@@ -1944,7 +1986,7 @@ class Init_APP():
             Mbox_In_Process.setText("Por favor espere la ventana de confirmación, mientras se procesa las asignaciones.")
             Mbox_In_Process.exec()
             
-            folder_path_bg = f"{self.folder_path}----- Bases para BIG DATA ----"
+            folder_path_bg = f"{self.folder_path}---- Bases para BIG DATA ----"
             bigdata.data_ai.claro_structure_df(self.folder_path_IVR, folder_path_bg, self.partitions_FOLDER)
 
             Mbox_In_Process = QMessageBox() 
@@ -1976,7 +2018,7 @@ class Init_APP():
             Mbox_In_Process.setText("Por favor espere la ventana de confirmación, mientras se procesan los demograficos.")
             Mbox_In_Process.exec()
             
-            folder_path_bg = f"{self.folder_path}----- Bases para BIG DATA ----"
+            folder_path_bg = f"{self.folder_path}---- Bases para BIG DATA ----"
             bigdata.demos_ai.function_complete_demographic(self.folder_path_IVR, folder_path_bg, self.partitions_FOLDER, self.bigdatamonth, self.bigdatayear)
 
             Mbox_In_Process = QMessageBox() 
@@ -2008,7 +2050,7 @@ class Init_APP():
             Mbox_In_Process.setText("Por favor espere la ventana de confirmación, mientras se procesan los toques por telematica.")
             Mbox_In_Process.exec()
             
-            folder_path_bg = f"{self.folder_path}----- Bases para BIG DATA ----"
+            folder_path_bg = f"{self.folder_path}---- Bases para BIG DATA ----"
             bigdata.touch_ai.touch_dataframes_bd(self.folder_path_IVR, folder_path_bg, self.partitions_FOLDER, self.bigdatamonth, self.bigdatayear)
 
             Mbox_In_Process = QMessageBox() 
@@ -2040,13 +2082,338 @@ class Init_APP():
             Mbox_In_Process.setText("Por favor espere la ventana de confirmación, mientras se procesan los Datasets de bigdata.")
             Mbox_In_Process.exec()
             
-            folder_path_bg = f"{self.folder_path}----- Bases para BIG DATA ----"
+            folder_path_bg = f"{self.folder_path}---- Bases para BIG DATA ----"
             bigdata.union_datalakes_claro.read_compilation_datasets(self.folder_path_IVR, folder_path_bg, self.partitions_FOLDER, self.bigdatamonth, self.bigdatayear)
 
             Mbox_In_Process = QMessageBox() 
             Mbox_In_Process.setWindowTitle("")
             Mbox_In_Process.setIcon(QMessageBox.Icon.Information)
             Mbox_In_Process.setText("Dataset generado exitosamente.")
+            Mbox_In_Process.exec()
+        
+        else:
+            Mbox_File_Error = QMessageBox()
+            Mbox_File_Error.setWindowTitle("Error de procesamiento")
+            Mbox_File_Error.setIcon(QMessageBox.Icon.Warning)
+            Mbox_File_Error.setText("Debe seleccionar una ruta con los archivos a consolidar.")
+            Mbox_File_Error.exec()
+
+    def exec_claro_blaster(self):
+
+        type_process = "folder"
+        
+        self.validation_data_folders(type_process)
+        self.digit_partitions_FOLDER()
+
+        if self.folder_path_IVR != None:
+
+            Mbox_In_Process = QMessageBox()
+            Mbox_In_Process.setWindowTitle("Procesando")
+            Mbox_In_Process.setIcon(QMessageBox.Icon.Information)
+            Mbox_In_Process.setText("Por favor espere la ventana de confirmación, mientras se procesa el blaster.")
+            Mbox_In_Process.exec()
+            
+            folder_path_bg = f"{self.folder_path}---- Bases BLASTER ----"
+            efecty_blaster.process_ivr_data(self.folder_path_IVR, folder_path_bg)
+
+            Mbox_In_Process = QMessageBox() 
+            Mbox_In_Process.setWindowTitle("")
+            Mbox_In_Process.setIcon(QMessageBox.Icon.Information)
+            Mbox_In_Process.setText("Archivos generados exitosamente.")
+            Mbox_In_Process.exec()
+        
+        else:
+            Mbox_File_Error = QMessageBox()
+            Mbox_File_Error.setWindowTitle("Error de procesamiento")
+            Mbox_File_Error.setIcon(QMessageBox.Icon.Warning)
+            Mbox_File_Error.setText("Debe seleccionar una ruta con los archivos a consolidar.")
+            Mbox_File_Error.exec()
+    
+    def exec_batch_claro(self):
+
+        type_process = "folder"
+        
+        self.validation_data_folders(type_process)
+        self.digit_partitions_FOLDER()
+
+        if self.folder_path_IVR != None:
+
+            Mbox_In_Process = QMessageBox()
+            Mbox_In_Process.setWindowTitle("Procesando")
+            Mbox_In_Process.setIcon(QMessageBox.Icon.Information)
+            Mbox_In_Process.setText("Por favor espere la ventana de confirmación, mientras se procesa la carpeta.")
+            Mbox_In_Process.exec()
+
+            folder_path_bg = f"{self.folder_path}"
+            resultado = batch_api_claro.process_batch_files(self.folder_path_IVR, folder_path_bg)
+
+            Mbox_In_Process = QMessageBox()
+            Mbox_In_Process.setWindowTitle("Resultado")
+            Mbox_In_Process.setIcon(QMessageBox.Icon.Information)
+
+            if "Job ID:" in resultado:
+                Mbox_In_Process.setText(f"{resultado}")
+            elif "File saved at:" in resultado and "Upload failed" in resultado:
+                Mbox_In_Process.setText(f"⚠️ {resultado}")
+            else:
+                Mbox_In_Process.setText(resultado)
+
+            Mbox_In_Process.exec()
+        
+        else:
+            Mbox_File_Error = QMessageBox()
+            Mbox_File_Error.setWindowTitle("Error de procesamiento")
+            Mbox_File_Error.setIcon(QMessageBox.Icon.Warning)
+            Mbox_File_Error.setText("Debe seleccionar una ruta con los archivos a consolidar.")
+            Mbox_File_Error.exec()
+
+    def exec_batch_otras_campanas(self):
+
+        type_process = "folder"
+        
+        self.validation_data_folders(type_process)
+        self.digit_partitions_FOLDER()
+
+        if self.folder_path_IVR != None:
+
+            Mbox_In_Process = QMessageBox()
+            Mbox_In_Process.setWindowTitle("Procesando")
+            Mbox_In_Process.setIcon(QMessageBox.Icon.Information)
+            Mbox_In_Process.setText("Por favor espere la ventana de confirmación, mientras se procesa la carpeta.")
+            Mbox_In_Process.exec()
+
+            folder_path_bg = f"{self.folder_path}"
+            resultado = batch_api_others_campaigns.process_batch_files(self.folder_path_IVR, folder_path_bg)
+
+            Mbox_In_Process = QMessageBox()
+            Mbox_In_Process.setWindowTitle("Resultado")
+            Mbox_In_Process.setIcon(QMessageBox.Icon.Information)
+
+            if "Job ID:" in resultado:
+                Mbox_In_Process.setText(f"{resultado}")
+            elif "File saved at:" in resultado and "Upload failed" in resultado:
+                Mbox_In_Process.setText(f"⚠️ {resultado}")
+            else:
+                Mbox_In_Process.setText(resultado)
+
+            Mbox_In_Process.exec()
+        
+        else:
+            Mbox_File_Error = QMessageBox()
+            Mbox_File_Error.setWindowTitle("Error de procesamiento")
+            Mbox_File_Error.setIcon(QMessageBox.Icon.Warning)
+            Mbox_File_Error.setText("Debe seleccionar una ruta con los archivos a consolidar.")
+            Mbox_File_Error.exec()
+    
+    def sell_pdfs_folder(self):
+
+        type_process = "folder"
+        
+        self.validation_data_folders(type_process)
+        self.digit_partitions_FOLDER()
+
+        if self.folder_path_IVR != None:
+
+            Mbox_In_Process = QMessageBox()
+            Mbox_In_Process.setWindowTitle("Procesando")
+            Mbox_In_Process.setIcon(QMessageBox.Icon.Information)
+            Mbox_In_Process.setText("Por favor espere la ventana de confirmación, mientras se procesa la carpeta.")
+            Mbox_In_Process.exec()
+
+            folder_path_bg = f"{self.folder_path}"
+            gui.conversion.sell_pdfs.watermark_pdfs(self.folder_path_IVR, folder_path_bg)
+
+            Mbox_In_Process = QMessageBox()
+            Mbox_In_Process.setWindowTitle("Resultado")
+            Mbox_In_Process.setIcon(QMessageBox.Icon.Information)
+
+            Mbox_In_Process = QMessageBox() 
+            Mbox_In_Process.setWindowTitle("")
+            Mbox_In_Process.setIcon(QMessageBox.Icon.Information)
+            Mbox_In_Process.setText("PDF marcados exitosamente.")
+            Mbox_In_Process.exec()
+        
+        else:
+            Mbox_File_Error = QMessageBox()
+            Mbox_File_Error.setWindowTitle("Error de procesamiento")
+            Mbox_File_Error.setIcon(QMessageBox.Icon.Warning)
+            Mbox_File_Error.setText("Debe seleccionar una ruta con los archivos a consolidar.")
+            Mbox_File_Error.exec()
+
+    def exec_report_batch_claro(self):
+
+        type_process = "folder"
+        
+        self.validation_data_folders(type_process)
+        self.digit_partitions_FOLDER()
+
+        if self.folder_path_IVR != None:
+
+            Mbox_In_Process = QMessageBox()
+            Mbox_In_Process.setWindowTitle("Procesando")
+            Mbox_In_Process.setIcon(QMessageBox.Icon.Information)
+            Mbox_In_Process.setText("Por favor espere la ventana de confirmación, mientras se procesa el reporte.")
+            Mbox_In_Process.exec()
+            
+            folder_path_report = f"{self.folder_path}---- Bases para REPORTE CLARO ----"
+            cruice_report_claro.report_claro_masive(self.folder_path_IVR, folder_path_report)
+
+            Mbox_In_Process = QMessageBox() 
+            Mbox_In_Process.setWindowTitle("")
+            Mbox_In_Process.setIcon(QMessageBox.Icon.Information)
+            Mbox_In_Process.setText("Reporte generado exitosamente.")
+            Mbox_In_Process.exec()
+        
+        else:
+            Mbox_File_Error = QMessageBox()
+            Mbox_File_Error.setWindowTitle("Error de procesamiento")
+            Mbox_File_Error.setIcon(QMessageBox.Icon.Warning)
+            Mbox_File_Error.setText("Debe seleccionar una ruta con los archivos a consolidar.")
+            Mbox_File_Error.exec()
+    
+    def exec_report_count_blaster(self):
+
+        type_process = "folder"
+        
+        self.validation_data_folders(type_process)
+        self.digit_partitions_FOLDER()
+
+        if self.folder_path_IVR != None:
+
+            Mbox_In_Process = QMessageBox()
+            Mbox_In_Process.setWindowTitle("Procesando")
+            Mbox_In_Process.setIcon(QMessageBox.Icon.Information)
+            Mbox_In_Process.setText("Por favor espere la ventana de confirmación, mientras se procesa el reporte.")
+            Mbox_In_Process.exec()
+            
+            gui.reports.report_batch_campaings.process_calls(self.folder_path_IVR, self.folder_path)
+
+            Mbox_In_Process = QMessageBox() 
+            Mbox_In_Process.setWindowTitle("")
+            Mbox_In_Process.setIcon(QMessageBox.Icon.Information)
+            Mbox_In_Process.setText("Reporte de BLASTER generado exitosamente.")
+            Mbox_In_Process.exec()
+        
+        else:
+            Mbox_File_Error = QMessageBox()
+            Mbox_File_Error.setWindowTitle("Error de procesamiento")
+            Mbox_File_Error.setIcon(QMessageBox.Icon.Warning)
+            Mbox_File_Error.setText("Debe seleccionar una ruta con los archivos a validar el BLASTER.")
+            Mbox_File_Error.exec()
+    
+    def exec_report_demos_payjoy(self):
+
+        type_process = "folder"
+        
+        self.validation_data_folders(type_process)
+        self.digit_partitions_FOLDER()
+
+        if self.folder_path_IVR != None:
+
+            Mbox_In_Process = QMessageBox()
+            Mbox_In_Process.setWindowTitle("Procesando")
+            Mbox_In_Process.setIcon(QMessageBox.Icon.Information)
+            Mbox_In_Process.setText("Por favor espere la ventana de confirmación, mientras se procesa el reporte.")
+            Mbox_In_Process.exec()
+            
+            gui.reports.report_cleaner_demos_payjoy.cleaner_demo_payjoy(self.folder_path_IVR, self.folder_path)
+
+            Mbox_In_Process = QMessageBox() 
+            Mbox_In_Process.setWindowTitle("")
+            Mbox_In_Process.setIcon(QMessageBox.Icon.Information)
+            Mbox_In_Process.setText("Reporte de demograficos en Payjoy generado exitosamente.")
+            Mbox_In_Process.exec()
+        
+        else:
+            Mbox_File_Error = QMessageBox()
+            Mbox_File_Error.setWindowTitle("Error de procesamiento")
+            Mbox_File_Error.setIcon(QMessageBox.Icon.Warning)
+            Mbox_File_Error.setText("Debe seleccionar una ruta con los archivos a validar el BLASTER.")
+            Mbox_File_Error.exec()
+    
+    def exec_report_inactive_accounts_claro(self):
+
+        type_process = "folder"
+        
+        self.validation_data_folders(type_process)
+        self.digit_partitions_FOLDER()
+
+        if self.folder_path_IVR != None:
+
+            Mbox_In_Process = QMessageBox()
+            Mbox_In_Process.setWindowTitle("Procesando")
+            Mbox_In_Process.setIcon(QMessageBox.Icon.Information)
+            Mbox_In_Process.setText("Por favor espere la ventana de confirmación, mientras se procesa el reporte.")
+            Mbox_In_Process.exec()
+            
+            gui.reports.report_inactive_claro.report_inactive_claro(self.folder_path_IVR, self.folder_path)
+
+            Mbox_In_Process = QMessageBox() 
+            Mbox_In_Process.setWindowTitle("")
+            Mbox_In_Process.setIcon(QMessageBox.Icon.Information)
+            Mbox_In_Process.setText("Reporte de cuentas inactivas en Claro generado exitosamente.")
+            Mbox_In_Process.exec()
+        
+        else:
+            Mbox_File_Error = QMessageBox()
+            Mbox_File_Error.setWindowTitle("Error de procesamiento")
+            Mbox_File_Error.setIcon(QMessageBox.Icon.Warning)
+            Mbox_File_Error.setText("Debe seleccionar una ruta con los archivos a validar el BLASTER.")
+            Mbox_File_Error.exec()
+    
+    def exec_report_count_batch_claro(self):
+
+        type_process = "folder"
+        
+        self.validation_data_folders(type_process)
+        self.digit_partitions_FOLDER()
+
+        if self.folder_path_IVR != None:
+
+            Mbox_In_Process = QMessageBox()
+            Mbox_In_Process.setWindowTitle("Procesando")
+            Mbox_In_Process.setIcon(QMessageBox.Icon.Information)
+            Mbox_In_Process.setText("Por favor espere la ventana de confirmación, mientras se procesa el reporte.")
+            Mbox_In_Process.exec()
+            
+            folder_path_bg = f"{self.folder_path}"
+            report_batch_count.process_call_files(self.folder_path_IVR, folder_path_bg)
+
+            Mbox_In_Process = QMessageBox() 
+            Mbox_In_Process.setWindowTitle("")
+            Mbox_In_Process.setIcon(QMessageBox.Icon.Information)
+            Mbox_In_Process.setText("Reporte generado exitosamente.")
+            Mbox_In_Process.exec()
+        
+        else:
+            Mbox_File_Error = QMessageBox()
+            Mbox_File_Error.setWindowTitle("Error de procesamiento")
+            Mbox_File_Error.setIcon(QMessageBox.Icon.Warning)
+            Mbox_File_Error.setText("Debe seleccionar una ruta con los archivos a consolidar.")
+            Mbox_File_Error.exec()
+    
+    def exec_report_cruice_demographic_claro(self):
+
+        type_process = "folder"
+        
+        self.validation_data_folders(type_process)
+        self.digit_partitions_FOLDER()
+
+        if self.folder_path_IVR != None:
+
+            Mbox_In_Process = QMessageBox()
+            Mbox_In_Process.setWindowTitle("Procesando")
+            Mbox_In_Process.setIcon(QMessageBox.Icon.Information)
+            Mbox_In_Process.setText("Por favor espere la ventana de confirmación, mientras se procesa el cruce.")
+            Mbox_In_Process.exec()
+            
+            folder_path_bg = f"{self.folder_path}"
+            cruice_demographic.demographic_cross(self.folder_path_IVR, folder_path_bg)
+
+            Mbox_In_Process = QMessageBox() 
+            Mbox_In_Process.setWindowTitle("")
+            Mbox_In_Process.setIcon(QMessageBox.Icon.Information)
+            Mbox_In_Process.setText("Reporte generado exitosamente.")
             Mbox_In_Process.exec()
         
         else:
@@ -2063,7 +2430,7 @@ class Init_APP():
         if len(list_to_process_Read) > 0:
             Folder_Resource = list_to_process_Read[0]
         else:
-            Folder_Resource = None
+            Folder_Resource = "TODOS"
 
         if Folder_Resource == "TODOS":
 
@@ -2073,82 +2440,8 @@ class Init_APP():
             Mbox_In_Process.setText("Por favor espere la ventana de confirmación, mientras se procesa la carpeta.")
             Mbox_In_Process.exec()
             
-            Path_Resource = f"{self.folder_path_IVR}/IVR"
-            self.Base = skills.count_ivr.function_complete_IVR(Path_Resource, self.folder_path, self.partitions_FOLDER, self.process_data)
-            Path_Resource = f"{self.folder_path_IVR}/BOT"
-            self.Base = skills.count_bot.function_complete_BOT(Path_Resource, self.folder_path, self.partitions_FOLDER, self.process_data)
-            Path_Resource = f"{self.folder_path_IVR}/EMAIL"
-            self.Base = skills.count_email.function_complete_EMAIL(Path_Resource, self.folder_path, self.partitions_FOLDER, self.process_data)
-            Path_Resource = f"{self.folder_path_IVR}/SMS"
-            self.Base = skills.count_sms.function_complete_SMS(Path_Resource, self.folder_path, self.partitions_FOLDER, self.process_data)
-
-            Mbox_In_Process = QMessageBox()
-            Mbox_In_Process.setWindowTitle("")
-            Mbox_In_Process.setIcon(QMessageBox.Icon.Information)
-            Mbox_In_Process.setText("Consolidado de recurso(s) ejecutado exitosamente.")
-            Mbox_In_Process.exec()
-
-        elif Folder_Resource == "IVR":
-
-            Mbox_In_Process = QMessageBox()
-            Mbox_In_Process.setWindowTitle("Procesando")
-            Mbox_In_Process.setIcon(QMessageBox.Icon.Information)
-            Mbox_In_Process.setText("Por favor espere la ventana de confirmación, mientras se procesa la carpeta.")
-            Mbox_In_Process.exec()
-
             Path_Resource = f"{self.folder_path_IVR}"
-            self.Base = skills.count_ivr.function_complete_IVR(Path_Resource, self.folder_path, self.partitions_FOLDER, self.process_data)
-
-            Mbox_In_Process = QMessageBox()
-            Mbox_In_Process.setWindowTitle("")
-            Mbox_In_Process.setIcon(QMessageBox.Icon.Information)
-            Mbox_In_Process.setText("Consolidado de recurso(s) ejecutado exitosamente.")
-            Mbox_In_Process.exec()
-
-        elif Folder_Resource == "BOT":
-
-            Mbox_In_Process = QMessageBox()
-            Mbox_In_Process.setWindowTitle("Procesando")
-            Mbox_In_Process.setIcon(QMessageBox.Icon.Information)
-            Mbox_In_Process.setText("Por favor espere la ventana de confirmación, mientras se procesa la carpeta.")
-            Mbox_In_Process.exec()
-            
-            Path_Resource = f"{self.folder_path_IVR}"
-            self.Base = skills.count_bot.function_complete_BOT(Path_Resource, self.folder_path, self.partitions_FOLDER, self.process_data)
-
-            Mbox_In_Process = QMessageBox()
-            Mbox_In_Process.setWindowTitle("")
-            Mbox_In_Process.setIcon(QMessageBox.Icon.Information)
-            Mbox_In_Process.setText("Consolidado de recurso(s) ejecutado exitosamente.")
-            Mbox_In_Process.exec()
-
-        elif Folder_Resource == "SMS":
-
-            Mbox_In_Process = QMessageBox()
-            Mbox_In_Process.setWindowTitle("Procesando")
-            Mbox_In_Process.setIcon(QMessageBox.Icon.Information)
-            Mbox_In_Process.setText("Por favor espere la ventana de confirmación, mientras se procesa la carpeta.")
-            Mbox_In_Process.exec()
-            
-            Path_Resource = f"{self.folder_path_IVR}"
-            self.Base = skills.count_sms.function_complete_SMS(Path_Resource, self.folder_path, self.partitions_FOLDER, self.process_data)
-
-            Mbox_In_Process = QMessageBox()
-            Mbox_In_Process.setWindowTitle("")
-            Mbox_In_Process.setIcon(QMessageBox.Icon.Information)
-            Mbox_In_Process.setText("Consolidado de recurso(s) ejecutado exitosamente.")
-            Mbox_In_Process.exec()
-
-        elif Folder_Resource == "EMAIL":
-
-            Mbox_In_Process = QMessageBox()
-            Mbox_In_Process.setWindowTitle("Procesando")
-            Mbox_In_Process.setIcon(QMessageBox.Icon.Information)
-            Mbox_In_Process.setText("Por favor espere la ventana de confirmación, mientras se procesa la carpeta.")
-            Mbox_In_Process.exec()
-            
-            Path_Resource = f"{self.folder_path_IVR}"
-            self.Base = skills.count_email.function_complete_EMAIL(Path_Resource, self.folder_path, self.partitions_FOLDER, self.process_data)
+            self.Base = skills.count_telematic.process_management_files(Path_Resource, self.folder_path, self.partitions_FOLDER, self.process_data)
 
             Mbox_In_Process = QMessageBox()
             Mbox_In_Process.setWindowTitle("")

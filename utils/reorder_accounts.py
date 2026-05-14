@@ -8,13 +8,21 @@ from pyspark.sql.functions import expr, when, row_number, collect_list, sum, len
 from web.pyspark_session import get_spark_session
 from web.save_files import save_to_csv
 
-spark = get_spark_session()
-
-sqlContext = SQLContext(spark)
+spark = None
+sqlContext = None
+def get_lazy_spark():
+    """Inicializa Spark solo si no existe una sesión previa."""
+    global spark, sqlContext
+    if spark is None:
+        from pyspark.sql import SQLContext # Import local para optimizar
+        spark = get_spark_session()
+        sqlContext = SQLContext(spark)
+    return spark, sqlContext
 
 ### Proceso con todas las funciones desarrolladas
 def Function_Complete(path, output_directory, Partitions):
 
+    get_lazy_spark()
     Data_Frame = First_Changes_DataFrame(path)
     Data_Frame = ORDER_Process(Data_Frame, output_directory, Partitions)
 

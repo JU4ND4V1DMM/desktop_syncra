@@ -6,12 +6,20 @@ from pyspark.sql.functions import col, concat, lit, upper, regexp_replace, lengt
 from pyspark.sql.functions import trim, format_number, expr, when, coalesce, datediff, current_date
 from web.pyspark_session import get_spark_session
  
-spark = get_spark_session()
-
-sqlContext = SQLContext(spark)
+spark = None
+sqlContext = None
+def get_lazy_spark():
+    """Inicializa Spark solo si no existe una sesión previa."""
+    global spark, sqlContext
+    if spark is None:
+        from pyspark.sql import SQLContext # Import local para optimizar
+        spark = get_spark_session()
+        sqlContext = SQLContext(spark)
+    return spark, sqlContext
 
 def Function_Complete(Data_):
     
+    get_lazy_spark()
     Data_ = change_name_column(Data_, "nombrecompleto")
 
     #### Change value of DTO

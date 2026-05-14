@@ -18,12 +18,21 @@ os.environ["PYSPARK_DRIVER_MEMORY"] = Ram
 os.environ["PYSPARK_EXECUTOR_MEMORY"] = Ram  
 os.environ["PYDEVD_WARN_SLOW_RESOLVE_TIMEOUT"] = TimeOUT
 
-spark = get_spark_session()
-
-sqlContext = SQLContext(spark)
+spark = None
+sqlContext = None
+def get_lazy_spark():
+    """Inicializa Spark solo si no existe una sesión previa."""
+    global spark, sqlContext
+    if spark is None:
+        from pyspark.sql import SQLContext # Import local para optimizar
+        spark = get_spark_session()
+        sqlContext = SQLContext(spark)
+    return spark, sqlContext
 
 ### Proceso con todas las funciones desarrolladas
 def function_complete_demographic(path, output_directory, Partitions, month_data, year_data):
+    
+    get_lazy_spark()
 
     files = [os.path.join(path, file) for file in os.listdir(path) if file.endswith(".csv")]
     Data_Frame = spark.read.option("header", "true").option("sep", ";").csv(files)

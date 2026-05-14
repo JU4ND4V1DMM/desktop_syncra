@@ -3,13 +3,21 @@ from pyspark.sql.functions import col
 import pandas as pd
 import os
 from web.pyspark_session import get_spark_session
- 
-spark = get_spark_session()
 
-sqlContext = SQLContext(spark)
+spark = None
+sqlContext = None
+def get_lazy_spark():
+    """Inicializa Spark solo si no existe una sesión previa."""
+    global spark, sqlContext
+    if spark is None:
+        from pyspark.sql import SQLContext # Import local para optimizar
+        spark = get_spark_session()
+        sqlContext = SQLContext(spark)
+    return spark, sqlContext
 
 # Function to process the CSV file
 def process_csv_file(input_file, output_directory):
+    get_lazy_spark()
     # Read the CSV file with the specified delimiter and infer schema
     df = spark.read.option("delimiter", ";").option("header", "true").csv(input_file)
     

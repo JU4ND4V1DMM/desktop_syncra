@@ -1,10 +1,20 @@
 import os
 from web.pyspark_session import get_spark_session
 from pyspark.sql import DataFrame
+from pyspark.sql.functions import lit
 from datetime import datetime
 from web.save_files import save_to_csv
  
-spark = get_spark_session()
+spark = None
+sqlContext = None
+def get_lazy_spark():
+    """Inicializa Spark solo si no existe una sesión previa."""
+    global spark, sqlContext
+    if spark is None:
+        from pyspark.sql import SQLContext # Import local para optimizar
+        spark = get_spark_session()
+        sqlContext = SQLContext(spark)
+    return spark, sqlContext
 
 def read_file_with_delimiter(file_path: str) -> DataFrame:
     """📖 Read file and detect delimiter automatically"""
@@ -29,6 +39,7 @@ def read_file_with_delimiter(file_path: str) -> DataFrame:
     return df, delimiter
 
 def merge_files(input_directory: str, output_directory: str):
+    get_lazy_spark()
     """🔄 Merge multiple CSV/TXT files into a single file"""
     
     print("=" * 70)
@@ -57,6 +68,7 @@ def merge_files(input_directory: str, output_directory: str):
     found_delimiter = None
     total_files_processed = 0
     total_rows = 0
+    merged_with_origin_df = None
 
     for i, file_path in enumerate(file_paths, 1):
         print(f"\n📊 Processing file {i}/{len(file_paths)}: {os.path.basename(file_path)}")
@@ -66,6 +78,12 @@ def merge_files(input_directory: str, output_directory: str):
             found_delimiter = delimiter
             file_rows = df.count()
             total_rows += file_rows
+            
+            df_with_origin = df.withColumn("origen", lit(os.path.basename(file_path)))
+            if merged_with_origin_df is None:
+                merged_with_origin_df = df_with_origin
+            else:
+                merged_with_origin_df = merged_with_origin_df.unionByName(df_with_origin, allowMissingColumns=True)
             
             if merged_df is None:
                 merged_df = df
@@ -124,6 +142,10 @@ def merge_files(input_directory: str, output_directory: str):
         # 💽 Save the merged file
         print(f"\n📤 Saving merged file...")
         save_to_csv(merged_df, output_directory, Type_Process, Partitions, delimiter)
+        
+        if merged_with_origin_df is not None:
+            print(f"\n📤 Saving merged file with origin...")
+            save_to_csv(merged_with_origin_df, output_directory, "Union_Archivos_Con_Origen", Partitions, delimiter)
         
         print(f"\n✅ FINAL STATISTICS:")
         print(f"   • Total files merged: {total_files_processed}")

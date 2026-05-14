@@ -19,11 +19,20 @@ os.environ["PYSPARK_DRIVER_MEMORY"] = Ram
 os.environ["PYSPARK_EXECUTOR_MEMORY"] = Ram  
 os.environ["PYDEVD_WARN_SLOW_RESOLVE_TIMEOUT"] = TimeOUT
 
-spark = get_spark_session()
-
-sqlContext = SQLContext(spark)
-
+spark = None
+sqlContext = None
+def get_lazy_spark():
+    """Inicializa Spark solo si no existe una sesión previa."""
+    global spark, sqlContext
+    if spark is None:
+        from pyspark.sql import SQLContext # Import local para optimizar
+        spark = get_spark_session()
+        sqlContext = SQLContext(spark)
+    return spark, sqlContext
+    
 def claro_structure_df(Path_Original, outpath, partitions):
+    
+    get_lazy_spark()
     
     def read_any_format_files(path):
         """Read files in any supported format from a directory"""

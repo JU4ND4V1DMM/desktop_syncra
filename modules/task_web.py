@@ -10,14 +10,21 @@ from pyspark.sql.functions import expr, when, to_date, datediff, current_date, s
 from web.pyspark_session import get_spark_session
 from web.save_files import save_to_csv
  
-spark = get_spark_session()
-
-sqlContext = SQLContext(spark)
+spark = None
+sqlContext = None
+def get_lazy_spark():
+    """Inicializa Spark solo si no existe una sesión previa."""
+    global spark, sqlContext
+    if spark is None:
+        from pyspark.sql import SQLContext # Import local para optimizar
+        spark = get_spark_session()
+        sqlContext = SQLContext(spark)
+    return spark, sqlContext
 
 
 ### Proceso con todas las funciones desarrolladas
 def Function_Complete(path, output_directory, partitions, filter_brands, filter_origins, Dates, Today_IVR, Benefits, Contacts_Min, Value_Min, Value_Max):
-
+    get_lazy_spark()
     Data_Frame = First_Changes_DataFrame(path)
     Data_Frame = Phone_Data(Data_Frame)
     
