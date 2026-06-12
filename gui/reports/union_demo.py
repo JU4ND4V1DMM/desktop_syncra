@@ -4,7 +4,7 @@ from pyspark.sql.functions import col, concat, lit, upper, regexp_replace, trim,
 from datetime import datetime
 import os
 from web.save_files import save_to_csv
- 
+
 spark = None
 sqlContext = None
 def get_lazy_spark():

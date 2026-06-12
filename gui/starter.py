@@ -137,68 +137,81 @@ class Init_APP():
         self.row_count_FILES = None
         self.row_count_PASH = None
         self.row_count_DIR = None
-        SessionSpark = Version_Winutils < Version_Pyspark
+        SessionSpark = (
+            lambda x, y: (
+                (x.toordinal() - y.toordinal())
+                in range(1, 10**9)
+            )
+        )(
+            Version_Pyspark,
+            Version_Winutils,
+        )
+        Root_API = self.root_API
         Version_Api = "v1.0.13 (Py3.11-Spark3.5)"
         API = "Syncra"
-        Root_API = self.root_API
+        try:
+            if SessionSpark:
+                self.process_data = uic.loadUi(f"{Root_API}/gui/Project.ui")
+                self.process_data.show()
+                
+                var__count = 0
+                self.process_data.label_Total_Registers_2.setText(f"{var__count}")
+                self.process_data.label_Total_Registers_6.setText(f"{var__count}")
+                self.process_data.label_Total_Registers_4.setText(f"{var__count}")
+                self.process_data.label_Total_Registers_2.setText(f"{var__count}")
+                self.process_data.label_Total_Registers_7.setText(f"{var__count}")
+
+                self.process_data.label_Version_Control_9.setText(f"{API} - {Version_Api}")
+                self.process_data.label_Version_Control_2.setText(f"{API} - {Version_Api}") 
+                self.process_data.label_Version_Control_3.setText(f"{API} - {Version_Api}")
+                self.process_data.label_Version_Control.setText(f"{API} - {Version_Api}")
+                self.process_data.label_Version_Control_5.setText(f"{API} - {Version_Api}")
+                
+                ram_avaliable = psutil.virtual_memory().available / (1024 ** 3) 
+                ram_gb = round(ram_avaliable, 1) 
+                self.process_data.lcdNumber.display(ram_gb)
+                
+                info = cpuinfo.get_cpu_info()
+                processor_name = info['brand_raw']
+                self.process_data.label_3.setText(f"{processor_name}")
+
+                def get_disk_space_psutil(drive_path):
+                    try:
+                        if drive_path.endswith('/') or drive_path.endswith('\\'):
+                            drive_path = drive_path.rstrip('/\\')
+                        
+                        for partition in psutil.disk_partitions():
+                            if partition.device.startswith(drive_path) or drive_path.startswith(partition.device):
+                                usage = psutil.disk_usage(partition.mountpoint)
+                                free_gb = usage.free // (1024**3)
+                                return free_gb
+                        return 0
+                    except Exception as e:
+                        print(f"💥 Error accediendo a {drive_path}: {e}")
+                        return 0
+                
+                free_c = get_disk_space_psutil("C:")
+                self.process_data.lcdNumber_3.display(free_c)
+                
+                free_d = get_disk_space_psutil("D:")
+                self.process_data.lcdNumber_2.display(free_d)
         
-        if SessionSpark:
-            
-            self.process_data = uic.loadUi(f"{Root_API}/gui/Project.ui")
-            self.process_data.show()
-            
-            var__count = 0
-            self.process_data.label_Total_Registers_2.setText(f"{var__count}")
-            self.process_data.label_Total_Registers_6.setText(f"{var__count}")
-            self.process_data.label_Total_Registers_4.setText(f"{var__count}")
-            self.process_data.label_Total_Registers_2.setText(f"{var__count}")
-            self.process_data.label_Total_Registers_7.setText(f"{var__count}")
+                self.exec_process()
+                
+            else:
+                self.process_data = uic.loadUi(f"{Root_API}/gui/warnsparksession.ui")
+                self.process_data.label_Version_Control_Version.setText(f"{API} - {Version_Api}")
+                self.process_data.label_Version_Detail.setText(f"{API} - {Version_Api}")
+                
+                self.process_data.show()
+                self.exec__process()
 
-            self.process_data.label_Version_Control_9.setText(f"{API} - {Version_Api}")
-            self.process_data.label_Version_Control_2.setText(f"{API} - {Version_Api}") 
-            self.process_data.label_Version_Control_3.setText(f"{API} - {Version_Api}")
-            self.process_data.label_Version_Control.setText(f"{API} - {Version_Api}")
-            self.process_data.label_Version_Control_5.setText(f"{API} - {Version_Api}")
-            
-            ram_avaliable = psutil.virtual_memory().available / (1024 ** 3) 
-            ram_gb = round(ram_avaliable, 1) 
-            self.process_data.lcdNumber.display(ram_gb)
-            
-            info = cpuinfo.get_cpu_info()
-            processor_name = info['brand_raw']
-            self.process_data.label_3.setText(f"{processor_name}")
-
-            def get_disk_space_psutil(drive_path):
-                try:
-                    if drive_path.endswith('/') or drive_path.endswith('\\'):
-                        drive_path = drive_path.rstrip('/\\')
-                    
-                    for partition in psutil.disk_partitions():
-                        if partition.device.startswith(drive_path) or drive_path.startswith(partition.device):
-                            usage = psutil.disk_usage(partition.mountpoint)
-                            free_gb = usage.free // (1024**3)
-                            return free_gb
-                    return 0
-                except Exception as e:
-                    print(f"💥 Error accediendo a {drive_path}: {e}")
-                    return 0
-            
-            free_c = get_disk_space_psutil("C:")
-            self.process_data.lcdNumber_3.display(free_c)
-            
-            free_d = get_disk_space_psutil("D:")
-            self.process_data.lcdNumber_2.display(free_d)
-    
-            self.exec_process()
-            
-        else:
-            
+        except Exception as e:
             self.process_data = uic.loadUi(f"{Root_API}/gui/warnsparksession.ui")
             self.process_data.label_Version_Control_Version.setText(f"{API} - {Version_Api}")
             self.process_data.label_Version_Detail.setText(f"{API} - {Version_Api}")
             
             self.process_data.show()
-            self.exec__process()      
         
     def exec_process(self):
 
@@ -572,11 +585,11 @@ class Init_APP():
             stdout, stderr = process.communicate()
 
             if process.returncode != 0:
-                error_message = f"❌ Error de Ejecucion:\n\n{stderr.strip()}" if stderr else "❌ Error desconocido."
+                error_message = f"Error: {stderr.strip()}" if stderr else "❌ Error desconocido."
                 self.process_data.label_Version_Detail.setText(error_message)
         
         except Exception as e:
-            self.process_data.label_Version_Detail.setText(f"❌ Error crítico:\n{str(e)}")
+            self.process_data.label_Version_Detail.setText(f"Error: {str(e)}")
         
     def copy_template_ivr(self):
         
@@ -1758,8 +1771,7 @@ class Init_APP():
         label = QLabel(
             "<h1>Esta aplicación fue desarrollada por:</h1><br>"
             "<b><h2>Juan Méndez – Arquitecto de Software</h2></b><br>"
-            "<span style='font-size: 18px;'>Responsable del diseño, implementación y supervisión del desarrollo. "
-            "Encargado de la integración de PySpark, transformación de datos, visualización, lógica y conexiones.</span><br><br>"
+            "<span style='font-size: 18px;'>Responsable del diseño, implementación, lógica ETL y refactorización del desarrollo durante todo su ciclo de vida.</span><br><br>"
             
             "<b><h2>Julián Tique – Desarrollador Full-Stack</h2></b><br>"
             "<span style='font-size: 18px;'>Apoyó en la refactorización de componentes RPA y en la implementación de API´s para funcionalidades con conceptos de la web.</span><br><br>"

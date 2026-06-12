@@ -138,7 +138,11 @@ def process_batch_files(input_path, output_path):
                     (pl.col('demografico') != '') &
                     (pl.col('demografico').is_not_null()) &
                     (pl.col('identificacion') != '') &
-                    (pl.col('identificacion').is_not_null())
+                    (pl.col('identificacion').is_not_null()) &
+                    (pl.col('cuenta_promesa') != '') &
+                    (pl.col('cuenta_promesa').is_not_null()) &
+                    (pl.col('campana') != '') &
+                    (pl.col('campana').is_not_null())
                 )
                 
                 if df.height > 0:
