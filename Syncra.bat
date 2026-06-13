@@ -1,27 +1,30 @@
 @echo off
+
 :: ============================================
-:: Update the project and run the Python script
+:: Update repository
 :: ============================================
 
-:: 🧭 Move to the directory where this script is located
 cd /d "%~dp0"
 
-echo 🔄 Fetching latest changes from Git...
+echo Fetching latest changes from Git...
 git fetch --all
 git reset --hard origin/master
-echo ✅ Repository successfully updated.
+echo Repository successfully updated.
 
 :: ============================================
-:: Run main.py using system Python
+:: Run application
 :: ============================================
 
-echo 🚀 Running main.py...
+echo Starting Syncra...
 
-:: Using start /B to run in the background without opening a new window
-start "" /B python main.py
+if exist ".venv\Scripts\python.exe" (
+    start "" /B ".venv\Scripts\python.exe" main.py
+) else (
+    start "" /B python main.py
+)
 
 if %errorlevel% neq 0 (
-    echo ❌ Error: Failed to start main.py. Please check if Python is in your PATH.
+    echo Error: Failed to start main.py
     pause
 )
 

@@ -1,9 +1,35 @@
+# Virtual environment
+.venv/
 venv/
+
+# Environment variables
 .env
-*.pyc
+
+# Python
 __pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Build artifacts
+build/
+dist/
+*.build/
+*.dist/
+
+# Nuitka
+*.onefile-build/
+*.exe.manifest
+
+# SQLite
 db.sqlite3
-dataconnect*
+
+# Firebase
 .firebase*
-.vscode*
 cloud/*.json
+
+# VS Code
+.vscode/
+
+# Otros
+dataconnect*
